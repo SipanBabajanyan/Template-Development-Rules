@@ -729,9 +729,228 @@ FEATURE_DARK_MODE=true
 
 ---
 
+## ☁️ MANAGED PLATFORMS (Vercel, Railway, Render, Fly.io)
+
+> Если деплой на managed платформы — Docker и K8s секции выше не нужны.
+
+### Сравнение платформ
+
+```markdown
+| Платформа | Best for | Особенности |
+|-----------|----------|-------------|
+| **Vercel** | Next.js, Frontend | Edge Functions, ISR, идеален для Next.js |
+| **Railway** | Full-stack, API | Простой, хороший DX, дешевле Vercel для backend |
+| **Render** | Full-stack | Бесплатный tier, background workers |
+| **Fly.io** | Global, Edge | Контейнеры близко к юзерам, low latency |
+```
+
+### Vercel (Next.js)
+
+```markdown
+## Что Vercel делает автоматически
+
+- ✅ Build и deploy при push
+- ✅ Preview deployments для каждого PR
+- ✅ SSL сертификаты
+- ✅ CDN / Edge Network
+- ✅ Environment variables management
+- ✅ Analytics и Speed Insights
+- ✅ Интеграция с Neon (auto DB branches)
+
+## Настройка
+
+1. Подключить GitHub repo
+2. Выбрать Framework Preset: Next.js
+3. Настроить Environment Variables
+4. Deploy
+```
+
+```typescript
+// vercel.json (опционально, для кастомизации)
+{
+  "framework": "nextjs",
+  "regions": ["iad1"],  // US East (ближе к Neon)
+  "env": {
+    "NEXT_PUBLIC_API_URL": "https://api.example.com"
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store" }
+      ]
+    }
+  ]
+}
+```
+
+### Railway
+
+```markdown
+## Когда использовать
+
+- Backend API (NestJS, Express)
+- Cron jobs / background workers
+- Полноценные приложения (не только frontend)
+- Нужна БД и другие сервисы рядом
+
+## Что Railway делает
+
+- ✅ Auto-deploy при push
+- ✅ Preview environments
+- ✅ Встроенные сервисы (Postgres, Redis, etc.)
+- ✅ Private networking между сервисами
+- ✅ Logs и metrics
+
+## Настройка
+
+1. New Project → Deploy from GitHub
+2. Railway автоматически определяет framework
+3. Add Variables
+4. Deploy
+```
+
+```toml
+# railway.toml (опционально)
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "npm run start:prod"
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "on_failure"
+```
+
+### Render
+
+```markdown
+## Когда использовать
+
+- Нужен бесплатный tier
+- Background workers / Cron
+- Static sites
+- Простые API
+
+## Особенности
+
+- ✅ Free tier (с ограничениями)
+- ✅ Auto-deploy
+- ✅ Background workers
+- ⚠️ Cold starts на free tier
+```
+
+```yaml
+# render.yaml
+services:
+  - type: web
+    name: api
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: mydb
+          property: connectionString
+```
+
+### Fly.io
+
+```markdown
+## Когда использовать
+
+- Нужна low latency globally
+- Edge computing
+- Контейнеры с полным контролем
+- WebSockets / real-time apps
+
+## Особенности
+
+- ✅ Деплой в регионы близко к юзерам
+- ✅ Fly Machines (контейнеры)
+- ✅ Встроенный Postgres и Redis
+- ✅ Private networking
+- ⚠️ Сложнее чем Vercel/Railway
+```
+
+```toml
+# fly.toml
+app = "my-app"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 3000
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+  [[services.http_checks]]
+    path = "/health"
+    interval = 10000
+    timeout = 2000
+```
+
+### Что НЕ нужно с managed платформами
+
+```markdown
+## Можно пропустить
+
+- ❌ Писать Dockerfile (Vercel, Railway)
+- ❌ Настраивать Nginx/reverse proxy
+- ❌ SSL сертификаты
+- ❌ CI/CD pipelines для deploy (встроено)
+- ❌ Kubernetes манифесты
+- ❌ docker-compose для production
+
+## Всё равно нужно
+
+- ✅ GitHub Actions для CI (lint, test, typecheck)
+- ✅ Environment variables настроить
+- ✅ Health check endpoint (/health или /api/health)
+- ✅ Мониторинг (Vercel Analytics, Sentry, etc.)
+```
+
+### Миграции БД на managed платформах
+
+```markdown
+## Vercel + Neon
+
+# В package.json
+"scripts": {
+  "postinstall": "prisma generate",
+  "vercel-build": "prisma generate && prisma migrate deploy && next build"
+}
+
+## Railway
+
+# В настройках Deploy Command:
+npx prisma migrate deploy && npm run start:prod
+
+## Или через GitHub Actions (рекомендуется для production)
+
+- Миграции запускать отдельным шагом
+- Проверять что миграция безопасна (не удаляет данные)
+- Делать backup перед миграцией
+```
+
+---
+
 ## 📋 CHECKLIST
 
-### CI Pipeline
+### CI Pipeline (GitHub Actions)
 
 - [ ] Lint (ESLint)
 - [ ] Format check (Prettier)
@@ -741,20 +960,36 @@ FEATURE_DARK_MODE=true
 - [ ] Build
 - [ ] Security audit
 
-### CD Pipeline
+### CD Pipeline (Managed Platforms)
 
-- [ ] Preview deployments для PR
-- [ ] Staging auto-deploy (develop)
-- [ ] Production deploy (main, с approval)
+- [ ] Preview deployments для PR *(автоматически на Vercel/Railway)*
+- [ ] Staging environment настроен
+- [ ] Production deploy (main branch)
 - [ ] Database migrations
-- [ ] Notifications (Slack/Discord)
+- [ ] Environment variables настроены
+- [ ] Health check endpoint работает
 
-### Docker
+### Docker (только если self-hosted или Fly.io)
 
 - [ ] Multi-stage build
 - [ ] Non-root user
 - [ ] Health checks
 - [ ] .dockerignore настроен
+
+### Vercel Checklist
+
+- [ ] Framework Preset правильный (Next.js)
+- [ ] Environment Variables настроены
+- [ ] Neon Integration подключена (если используется)
+- [ ] Custom domain настроен
+- [ ] Analytics включён
+
+### Railway/Render Checklist
+
+- [ ] Repo подключён
+- [ ] Build/Start commands настроены
+- [ ] Environment Variables настроены
+- [ ] Health check работает
 
 ### Feature Flags (если используются)
 
@@ -765,5 +1000,5 @@ FEATURE_DARK_MODE=true
 
 ---
 
-**Версия:** 1.1
+**Версия:** 1.2
 **Дата:** 2025-01-31
