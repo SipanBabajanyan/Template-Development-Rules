@@ -34,6 +34,24 @@
 |-----------|------|-------------------|
 | **Cloudflare** | [03-CLOUDFLARE.md](./03-CLOUDFLARE.md) | CDN, R2 storage, WAF, DNS |
 
+### Cache и Очереди
+
+| Платформа | Файл | Когда использовать |
+|-----------|------|-------------------|
+| **Upstash** | [09-UPSTASH.md](./09-UPSTASH.md) | Redis serverless, rate limiting, кэш |
+
+### Аутентификация
+
+| Платформа | Файл | Когда использовать |
+|-----------|------|-------------------|
+| **Clerk / NextAuth** | [10-AUTH.md](./10-AUTH.md) | Аутентификация пользователей |
+
+### Email
+
+| Платформа | Файл | Когда использовать |
+|-----------|------|-------------------|
+| **Resend** | [11-EMAIL.md](./11-EMAIL.md) | Транзакционные письма |
+
 ### DevOps и Мониторинг
 
 | Платформа | Файл | Когда использовать |
@@ -50,7 +68,8 @@
 ```
 Frontend:  Vercel
 Database:  Neon (Free tier)
-Storage:   Vercel Blob или Cloudflare R2
+Auth:      Clerk или NextAuth
+Storage:   Vercel Blob
 CI/CD:     Vercel (встроенный)
 ```
 
@@ -60,6 +79,9 @@ CI/CD:     Vercel (встроенный)
 Frontend:  Vercel
 Backend:   Railway или Vercel (API Routes)
 Database:  Neon (Pro)
+Cache:     Upstash Redis
+Auth:      Clerk
+Email:     Resend
 Storage:   Cloudflare R2
 CDN:       Cloudflare
 CI/CD:     GitHub Actions + Vercel
@@ -71,7 +93,10 @@ Monitoring: Sentry
 ```
 Frontend:  Vercel (Pro)
 Backend:   Railway / Fly.io
-Database:  Neon (Scale) + Redis
+Database:  Neon (Scale)
+Cache:     Upstash Redis
+Auth:      Clerk (Pro)
+Email:     Resend
 Storage:   Cloudflare R2
 CDN:       Cloudflare (Pro)
 CI/CD:     GitHub Actions
@@ -87,7 +112,10 @@ Monitoring: Sentry + Vercel Analytics
 - [ ] **Accounts созданы:**
   - [ ] Vercel
   - [ ] Neon
-  - [ ] Cloudflare (если нужен)
+  - [ ] Clerk / NextAuth настроен
+  - [ ] Upstash (если нужен кэш/rate limiting)
+  - [ ] Resend (если нужны email)
+  - [ ] Cloudflare (если нужен CDN)
   - [ ] Railway/Render/Fly.io (если backend)
   - [ ] Sentry (если нужен)
 
@@ -166,10 +194,13 @@ Monitoring: Sentry + Vercel Analytics
 ```
 1. GitHub     → Создать repo, настроить secrets
 2. Neon       → Создать database
-3. Vercel     → Подключить repo, настроить env vars
-4. Cloudflare → DNS, CDN (опционально)
-5. Railway    → Backend (если нужен)
-6. Sentry     → Мониторинг (опционально)
+3. Clerk      → Настроить аутентификацию
+4. Vercel     → Подключить repo, настроить env vars
+5. Upstash    → Redis для кэша/rate limiting (опционально)
+6. Resend     → Email (опционально)
+7. Cloudflare → DNS, CDN (опционально)
+8. Railway    → Backend (если нужен)
+9. Sentry     → Мониторинг (опционально)
 ```
 
 ---
@@ -186,9 +217,12 @@ Settings/
 ├── 05-RENDER.md         # Render настройка
 ├── 06-FLYIO.md          # Fly.io настройка
 ├── 07-GITHUB.md         # GitHub Actions, Secrets
-└── 08-SENTRY.md         # Sentry мониторинг
+├── 08-SENTRY.md         # Sentry мониторинг
+├── 09-UPSTASH.md        # Redis serverless (кэш, очереди)
+├── 10-AUTH.md           # Аутентификация (Clerk, NextAuth)
+└── 11-EMAIL.md          # Транзакционные email (Resend)
 ```
 
 ---
 
-**Версия:** 1.0
+**Версия:** 1.1
