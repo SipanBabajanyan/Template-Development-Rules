@@ -208,7 +208,7 @@ Monitoring: Sentry + Vercel Analytics
 ## 📁 ФАЙЛЫ В ЭТОЙ ПАПКЕ
 
 ```
-Settings/
+Platforms/
 ├── 00-PLATFORMS.md      # ← Этот файл (оглавление)
 ├── 01-VERCEL.md         # Vercel настройка
 ├── 02-NEON.md           # Neon Database настройка
