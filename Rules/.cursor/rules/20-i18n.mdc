@@ -24,13 +24,32 @@ alwaysApply: false
 ### Настройка (App Router)
 
 ```typescript
-// next.config.js
-module.exports = {
-  i18n: {
-    locales: ['en', 'ru', 'hy'],
-    defaultLocale: 'en',
-    localeDetection: true,
-  },
+// middleware.ts — определение языка через middleware
+import { NextRequest, NextResponse } from 'next/server';
+
+const locales = ['en', 'ru', 'hy'];
+const defaultLocale = 'en';
+
+export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Проверяем есть ли locale в URL
+  const pathnameHasLocale = locales.some(
+    (locale) => pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`
+  );
+
+  if (pathnameHasLocale) return;
+
+  // Определяем locale из Accept-Language header
+  const locale = request.headers.get('accept-language')?.split(',')[0]?.split('-')[0] || defaultLocale;
+  const resolvedLocale = locales.includes(locale) ? locale : defaultLocale;
+
+  request.nextUrl.pathname = `/${resolvedLocale}${pathname}`;
+  return NextResponse.redirect(request.nextUrl);
+}
+
+export const config = {
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
 };
 ```
 
@@ -351,7 +370,7 @@ import { usePathname, useRouter } from 'next/navigation';
 const LOCALES = [
   { code: 'en', name: 'English', flag: '🇺🇸' },
   { code: 'ru', name: 'Русский', flag: '🇷🇺' },
-  { code: 'hy', name: 'Հայերdelays', flag: '🇦🇲' },
+  { code: 'hy', name: 'Հայերեն', flag: '🇦🇲' },
 ];
 
 export function LanguageSwitcher({ currentLocale }: { currentLocale: string }) {
@@ -454,5 +473,5 @@ formatCurrency(amount, currency, locale)
 
 ---
 
-**Версия:** 1.0
-**Дата:** 2025-01-31
+**Версия:** 1.1
+**Дата:** 2025-02-12

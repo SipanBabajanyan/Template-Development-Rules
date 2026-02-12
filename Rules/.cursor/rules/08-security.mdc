@@ -1,6 +1,6 @@
 ---
 description: Правила безопасности. КРИТИЧЕСКИ ВАЖНО. Применяется ко всему коду.
-globs: ["**/*"]
+globs: ["**/*.ts", "**/*.tsx", "**/*.env*", "**/api/**", "**/auth/**", "**/middleware*"]
 alwaysApply: false
 ---
 
@@ -138,17 +138,31 @@ return <div>{userInput}</div>; // Безопасно
 ### CSRF (Cross-Site Request Forgery)
 
 ```typescript
-// ✅ CSRF токены для форм
-import csrf from 'csurf';
+// ✅ Next.js — Server Actions имеют встроенную CSRF-защиту
+// (origin проверяется автоматически, SameSite cookies)
+// Дополнительно — SameSite cookies для сессий:
+cookies().set('session', value, { sameSite: 'strict', httpOnly: true, secure: true });
 
-app.use(csrf({ cookie: true }));
+// ✅ NestJS — кастомный CSRF guard
+// Вариант 1: Double Submit Cookie
+@Injectable()
+export class CsrfGuard implements CanActivate {
+  canActivate(context: ExecutionContext): boolean {
+    const req = context.switchToHttp().getRequest();
+    const cookieToken = req.cookies['csrf-token'];
+    const headerToken = req.headers['x-csrf-token'];
+    if (!cookieToken || cookieToken !== headerToken) {
+      throw new ForbiddenException('Invalid CSRF token');
+    }
+    return true;
+  }
+}
 
-// В форме
-<input type="hidden" name="_csrf" value={csrfToken} />
-
-// ✅ SameSite cookies
+// ✅ SameSite cookies (оба стека)
 res.cookie('session', value, { sameSite: 'strict' });
 ```
+
+> ⚠️ Пакет `csurf` deprecated (архивирован с 2022). Не используй его.
 
 ### SQL Injection
 
@@ -459,5 +473,96 @@ logger.info('Payment processed', {
 
 ---
 
-**Версия:** 1.0
-**Дата:** 2025-01-31
+---
+
+## ☁️ ХРАНИЛИЩЕ ФАЙЛОВ (CLOUDFLARE R2)
+
+> Cloudflare R2 — дефолтное хранилище для всех проектов. `public/` только для статических ассетов (favicon, robots.txt, og-image).
+
+### Env variables (обязательны при старте проекта)
+
+```bash
+R2_ACCOUNT_ID="your_account_id"
+R2_ACCESS_KEY_ID="your_access_key"
+R2_SECRET_ACCESS_KEY="your_secret_key"
+R2_BUCKET_NAME="your_bucket_name"
+R2_PUBLIC_URL="https://pub-xxx.r2.dev"  # или custom domain
+```
+
+### S3-compatible клиент (общий для обоих стеков)
+
+```typescript
+// lib/r2.ts
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+
+export const r2 = new S3Client({
+  region: 'auto',
+  endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+  credentials: {
+    accessKeyId: process.env.R2_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
+  },
+});
+
+export async function uploadFile(key: string, body: Buffer, contentType: string) {
+  await r2.send(new PutObjectCommand({
+    Bucket: process.env.R2_BUCKET_NAME!,
+    Key: key,
+    Body: body,
+    ContentType: contentType,
+  }));
+  return `${process.env.R2_PUBLIC_URL}/${key}`;
+}
+```
+
+### Next.js — Route Handler (upload)
+
+```typescript
+// app/api/upload/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { uploadFile } from '@/lib/r2';
+import { nanoid } from 'nanoid';
+
+export async function POST(req: NextRequest) {
+  const formData = await req.formData();
+  const file = formData.get('file') as File;
+  if (!file) return NextResponse.json({ error: 'No file' }, { status: 400 });
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const key = `uploads/${nanoid()}-${file.name}`;
+  const url = await uploadFile(key, buffer, file.type);
+
+  return NextResponse.json({ url });
+}
+```
+
+### NestJS — Upload через Multer
+
+```typescript
+// files/files.controller.ts
+@Controller('files')
+export class FilesController {
+  constructor(private readonly filesService: FilesService) {}
+
+  @Post('upload')
+  @UseInterceptors(FileInterceptor('file'))
+  async upload(@UploadedFile() file: Express.Multer.File) {
+    const key = `uploads/${nanoid()}-${file.originalname}`;
+    const url = await this.filesService.upload(key, file.buffer, file.mimetype);
+    return { url };
+  }
+}
+```
+
+### Правила
+
+- ✅ Все пользовательские файлы → R2
+- ✅ `public/` → только favicon.ico, robots.txt, sitemap.xml, og-image
+- ✅ Env vars для R2 заполнены при старте проекта
+- ❌ Не хранить пользовательские файлы в public/
+- ❌ Не коммитить загруженные файлы в репозиторий
+
+---
+
+**Версия:** 1.1
+**Дата:** 2025-02-12

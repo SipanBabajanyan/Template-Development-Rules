@@ -841,21 +841,50 @@ restartPolicyType = "on_failure"
 ```
 
 ```yaml
-# render.yaml
+# render.yaml — NestJS backend на Render
 services:
   - type: web
-    name: api
-    env: node
-    buildCommand: npm install && npm run build
-    startCommand: npm run start:prod
-    healthCheckPath: /health
+    name: nestjs-api
+    runtime: docker                      # Dockerfile для NestJS
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health/live
     envVars:
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
-        fromDatabase:
-          name: mydb
-          property: connectionString
+        sync: false                      # Задаётся вручную (Neon pooler URL)
+      - key: DIRECT_URL
+        sync: false                      # Neon direct URL для миграций
+      - key: PORT
+        value: 3000
+```
+
+```dockerfile
+# Dockerfile — NestJS на Render
+FROM node:20-alpine AS base
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
+FROM base AS deps
+WORKDIR /app
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile --prod=false
+
+FROM base AS build
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN pnpm prisma generate && pnpm build
+
+FROM base AS production
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/prisma ./prisma
+COPY package.json pnpm-lock.yaml ./
+
+EXPOSE 3000
+CMD ["node", "dist/main.js"]
 ```
 
 ### Fly.io
@@ -1000,5 +1029,42 @@ npx prisma migrate deploy && npm run start:prod
 
 ---
 
-**Версия:** 1.2
-**Дата:** 2025-01-31
+---
+
+## 📦 УПРАВЛЕНИЕ ЗАВИСИМОСТЯМИ
+
+### Стратегия обновлений
+
+| Тип обновления | Действие | Когда |
+|----------------|----------|-------|
+| Patch (x.x.1 → x.x.2) | Обновляй сразу | В рабочем PR или отдельным коммитом |
+| Minor (x.1.0 → x.2.0) | Обновляй в течение недели | После проверки changelog |
+| Major (1.x → 2.x) | Планируй миграцию | Отдельная задача, тесты обязательны |
+
+### Lockfile
+
+- ✅ Всегда коммить `pnpm-lock.yaml` (или `package-lock.json`)
+- ✅ `pnpm install --frozen-lockfile` в CI
+- ❌ Не удаляй lockfile для "исправления проблем"
+
+### Аудит безопасности
+
+```bash
+# Ежемесячно (или в CI)
+pnpm audit
+pnpm audit --fix  # Автоисправление patch-уязвимостей
+```
+
+### Правила
+
+- ✅ Используй точные версии в `dependencies` (без `^`)
+- ✅ `pnpm audit` в CI pipeline *(минимум ежемесячно)*
+- ✅ Проверяй changelog при обновлении minor/major
+- ✅ Обнови lockfile при добавлении зависимости
+- ❌ Не добавляй зависимость без обоснования (предпочти встроенное решение)
+- ❌ Не используй deprecated пакеты
+
+---
+
+**Версия:** 1.3
+**Дата:** 2025-02-12

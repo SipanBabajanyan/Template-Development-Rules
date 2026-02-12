@@ -158,7 +158,74 @@ logger.info({ fullRequest, fullResponse }, 'API call');
 logger.error('Something went wrong');
 ```
 
-### Request Logging Middleware
+### Next.js Request Logging (middleware)
+
+```typescript
+// middleware.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { v4 as uuid } from 'uuid';
+
+export function middleware(req: NextRequest) {
+  const requestId = req.headers.get('x-request-id') ?? uuid();
+  const start = Date.now();
+
+  const response = NextResponse.next();
+  response.headers.set('x-request-id', requestId);
+
+  // Для serverless — логируем в stdout (Vercel Logs подхватит)
+  console.log(JSON.stringify({
+    event: 'request',
+    requestId,
+    method: req.method,
+    path: req.nextUrl.pathname,
+    userAgent: req.headers.get('user-agent'),
+    ip: req.headers.get('x-forwarded-for'),
+    timestamp: new Date().toISOString(),
+  }));
+
+  return response;
+}
+
+export const config = {
+  matcher: ['/api/:path*'],
+};
+```
+
+### Next.js Logging в Route Handlers и Server Actions
+
+```typescript
+// lib/logger.ts — единый logger для Next.js
+import pino from 'pino';
+
+export const logger = pino({
+  level: process.env.LOG_LEVEL || 'info',
+  transport: process.env.NODE_ENV === 'development'
+    ? { target: 'pino-pretty' }
+    : undefined,
+});
+
+// app/api/orders/route.ts — использование в route handler
+import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
+
+export async function POST(req: NextRequest) {
+  const reqLogger = logger.child({ handler: 'POST /api/orders' });
+  const body = await req.json();
+
+  reqLogger.info({ userId: body.userId }, 'Creating order');
+
+  try {
+    const order = await createOrder(body);
+    reqLogger.info({ orderId: order.id }, 'Order created');
+    return NextResponse.json({ data: order }, { status: 201 });
+  } catch (error) {
+    reqLogger.error({ err: error }, 'Failed to create order');
+    return NextResponse.json({ error: { code: 'SERVER_ERROR' } }, { status: 500 });
+  }
+}
+```
+
+### NestJS/Express Request Logging Middleware
 
 ```typescript
 // middleware/request-logger.ts
@@ -382,20 +449,39 @@ Errors      — количество ошибок
 ### Correlation ID
 
 ```typescript
-// middleware/correlation.ts
+// === Next.js — middleware.ts ===
+import { NextRequest, NextResponse } from 'next/server';
+import { v4 as uuid } from 'uuid';
 
+export function middleware(req: NextRequest) {
+  const correlationId =
+    req.headers.get('x-correlation-id') ??
+    req.headers.get('x-request-id') ??
+    uuid();
+
+  // Пробрасываем в headers для route handlers
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set('x-correlation-id', correlationId);
+
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  response.headers.set('x-correlation-id', correlationId);
+  return response;
+}
+
+// Чтение в route handler:
+// const correlationId = req.headers.get('x-correlation-id');
+
+// === NestJS/Express — middleware/correlation.ts ===
 export function correlationMiddleware(
   req: Request,
   res: Response,
   next: NextFunction,
 ) {
-  // Получаем или генерируем correlation ID
   const correlationId = 
     req.headers['x-correlation-id'] as string ||
     req.headers['x-request-id'] as string ||
     uuid();
 
-  // Устанавливаем в заголовки
   req.headers['x-correlation-id'] = correlationId;
   res.setHeader('x-correlation-id', correlationId);
 
@@ -572,5 +658,5 @@ logger.debug('Entering function X'); // ❌ Слишком шумно
 
 ---
 
-**Версия:** 1.0
-**Дата:** 2025-01-31
+**Версия:** 1.1
+**Дата:** 2025-02-12

@@ -354,7 +354,40 @@ try {
 
 ## 🛑 GRACEFUL SHUTDOWN
 
-### Node.js Graceful Shutdown
+### Next.js — cleanup и health checks
+
+```typescript
+// Next.js на Vercel = serverless. Graceful shutdown не нужен —
+// каждый запрос обрабатывается изолированно.
+
+// Для Prisma в Next.js — singleton паттерн с cleanup
+// lib/prisma.ts
+import { PrismaClient } from '@prisma/client';
+
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
+
+export const prisma = globalForPrisma.prisma ?? new PrismaClient();
+
+if (process.env.NODE_ENV !== 'production') {
+  globalForPrisma.prisma = prisma;
+}
+
+// Next.js health check (если нужен для external monitoring)
+// app/api/health/route.ts
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+
+export async function GET() {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    return NextResponse.json({ status: 'ok', db: 'connected' });
+  } catch {
+    return NextResponse.json({ status: 'error', db: 'disconnected' }, { status: 503 });
+  }
+}
+```
+
+### NestJS — Graceful Shutdown
 
 ```typescript
 // main.ts
@@ -403,7 +436,7 @@ async function bootstrap() {
 bootstrap();
 ```
 
-### OnModuleDestroy для cleanup
+### NestJS — OnModuleDestroy для cleanup
 
 ```typescript
 // services/database.service.ts
@@ -434,7 +467,7 @@ export class RedisService implements OnModuleDestroy {
 }
 ```
 
-### Kubernetes Readiness/Liveness
+### NestJS — Health Checks (Kubernetes Readiness/Liveness)
 
 ```typescript
 // health/health.controller.ts
@@ -552,5 +585,5 @@ const response = await limiter.schedule(() =>
 
 ---
 
-**Версия:** 1.0
-**Дата:** 2025-01-31
+**Версия:** 1.1
+**Дата:** 2025-02-12

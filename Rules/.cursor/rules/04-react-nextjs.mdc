@@ -540,10 +540,127 @@ const Modal = dynamic(() => import('@/components/Modal'));
 - [ ] Server Components по умолчанию
 - [ ] Server Actions для мутаций
 - [ ] Suspense для загрузки
-- [ ] Metadata для SEO
+- [ ] Metadata для SEO (см. секцию ниже)
 - [ ] Image component для изображений
 
 ---
 
-**Версия:** 1.0
-**Дата:** 2025-01-31
+## 🔍 SEO
+
+### Metadata API (App Router)
+
+```typescript
+// app/layout.tsx — глобальные defaults
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  metadataBase: new URL('https://example.com'),
+  title: {
+    default: 'My App',
+    template: '%s | My App',
+  },
+  description: 'Описание приложения',
+  openGraph: {
+    type: 'website',
+    locale: 'ru_RU',
+    siteName: 'My App',
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+};
+```
+
+### Динамические metadata (generateMetadata)
+
+```typescript
+// app/products/[id]/page.tsx
+import type { Metadata } from 'next';
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const product = await getProduct(params.id);
+
+  return {
+    title: product.name,
+    description: product.description,
+    openGraph: {
+      title: product.name,
+      description: product.description,
+      images: [{ url: product.imageUrl, width: 1200, height: 630 }],
+    },
+  };
+}
+```
+
+### Structured Data (JSON-LD)
+
+```typescript
+// components/JsonLd.tsx
+export function JsonLd({ data }: { data: Record<string, unknown> }) {
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
+    />
+  );
+}
+
+// Использование в странице продукта
+<JsonLd data={{
+  '@context': 'https://schema.org',
+  '@type': 'Product',
+  name: product.name,
+  description: product.description,
+  image: product.imageUrl,
+  offers: {
+    '@type': 'Offer',
+    price: product.price,
+    priceCurrency: 'USD',
+  },
+}} />
+```
+
+### Sitemap и robots
+
+```typescript
+// app/sitemap.ts
+import type { MetadataRoute } from 'next';
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const products = await getAllProducts();
+  return [
+    { url: 'https://example.com', lastModified: new Date(), priority: 1 },
+    ...products.map((p) => ({
+      url: `https://example.com/products/${p.slug}`,
+      lastModified: p.updatedAt,
+      priority: 0.8,
+    })),
+  ];
+}
+
+// app/robots.ts
+import type { MetadataRoute } from 'next';
+
+export default function robots(): MetadataRoute.Robots {
+  return {
+    rules: { userAgent: '*', allow: '/', disallow: '/api/' },
+    sitemap: 'https://example.com/sitemap.xml',
+  };
+}
+```
+
+### SEO Checklist
+
+- [ ] `metadata` в root layout (title, description, OG)
+- [ ] `generateMetadata` для динамических страниц
+- [ ] JSON-LD structured data для ключевых сущностей
+- [ ] `sitemap.ts` для всех публичных страниц
+- [ ] `robots.ts` — разрешить индексацию, закрыть /api/
+- [ ] Canonical URLs (через `metadataBase`)
+- [ ] OG images (1200×630) для основных страниц
+
+---
+
+**Версия:** 1.1
+**Дата:** 2025-02-12
