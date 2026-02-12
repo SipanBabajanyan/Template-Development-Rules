@@ -811,6 +811,260 @@ datasource db {
 
 ---
 
+## 🛡️ РОЛИ И ЛИМИТЫ POSTGRES
+
+> Принцип минимальных привилегий: runtime приложение НЕ должно работать под owner/superuser.
+
+### Зачем это нужно
+
+Owner-роль (создаётся Neon автоматически) имеет права `CREATE`, `DROP`, `ALTER` — может менять структуру БД. Если приложение скомпрометировано (RCE, SQL injection через `$queryRawUnsafe`), атакующий получает полный контроль над схемой. Выделенный `app_user` с DML-only правами ограничивает blast radius.
+
+### Матрица ролей по размерам проектов
+
+| Роль | Size A (малый) | Size B (средний) | Size C (крупный) |
+|------|---------------|------------------|------------------|
+| **owner** (Neon default) | Миграции, ручные операции | Миграции в CI/CD | Миграции в CI/CD |
+| **app_user** | ✅ Runtime приложения | ✅ Runtime приложения | ✅ Runtime приложения |
+| **readonly_user** | ❌ Не нужна | ⚠️ Опционально (аналитика) | ✅ Обязательно (аналитика, поддержка) |
+| **analytics_user** | ❌ Не нужна | ❌ Не нужна | ⚠️ Опционально (длинные отчёты) |
+
+---
+
+### Создание runtime пользователя (app_user)
+
+> 🔴 **Обязательно для всех размеров проектов (A/B/C)**
+
+```sql
+-- 1. Создать runtime роль
+CREATE ROLE app_user WITH LOGIN PASSWORD '<сгенерировать: openssl rand -base64 32>';
+
+-- 2. Доступ к БД и схеме
+GRANT CONNECT ON DATABASE neondb TO app_user;
+GRANT USAGE ON SCHEMA public TO app_user;
+
+-- 3. DML-only права (SELECT, INSERT, UPDATE, DELETE)
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO app_user;
+
+-- 4. Права на sequences (для CUID/autoincrement)
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO app_user;
+
+-- 5. DEFAULT PRIVILEGES — чтобы новые таблицы тоже были доступны
+-- ⚠️ Выполнять ОТ ИМЕНИ owner (того кто запускает prisma migrate deploy)
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO app_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT USAGE, SELECT ON SEQUENCES TO app_user;
+```
+
+### Создание readonly пользователя (Size B/C)
+
+```sql
+-- Для аналитики, поддержки, дебага
+CREATE ROLE readonly_user WITH LOGIN PASSWORD '<сгенерировать>';
+
+GRANT CONNECT ON DATABASE neondb TO readonly_user;
+GRANT USAGE ON SCHEMA public TO readonly_user;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO readonly_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT SELECT ON TABLES TO readonly_user;
+```
+
+### Создание analytics пользователя (Size C)
+
+```sql
+-- Для длинных отчётов — мягкие таймауты
+CREATE ROLE analytics_user WITH LOGIN PASSWORD '<сгенерировать>';
+
+GRANT CONNECT ON DATABASE neondb TO analytics_user;
+GRANT USAGE ON SCHEMA public TO analytics_user;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO analytics_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT SELECT ON TABLES TO analytics_user;
+
+-- Мягкие таймауты для длинных запросов
+ALTER ROLE analytics_user SET statement_timeout = '5min';
+ALTER ROLE analytics_user SET idle_in_transaction_session_timeout = '5min';
+ALTER ROLE analytics_user SET lock_timeout = '30s';
+ALTER ROLE analytics_user CONNECTION LIMIT 3;
+```
+
+---
+
+### CONNECTION LIMIT
+
+> Устанавливать ли лимит зависит от типа деплоя, а не от размера проекта.
+
+| Сценарий деплоя | CONNECTION LIMIT | Причина |
+|-----------------|-----------------|---------|
+| **Vercel serverless** (pooled) | ❌ Не ставить на роль | Neon Pooler управляет подключениями. Лимит на роли вызовет `too many connections` при всплесках |
+| **NestJS на Render/Railway** (long-running) | ✅ Ставить | Защита от утечки подключений при autoscaling инстансов |
+| **Monorepo (web + api)** | ✅ Ставить на api, не ставить на web | Web через pooler, API — direct/pooled с контролем |
+
+#### Формула расчёта CONNECTION LIMIT
+
+```
+CONNECTION LIMIT = (кол-во инстансов × размер пула) + запас (5-10)
+
+Примеры:
+- 2 инстанса NestJS × 10 пул = 20 + 10 запас = 30
+- 3 инстанса × 15 пул = 45 + 10 запас = 55
+```
+
+#### Рекомендации по размерам
+
+| Параметр | Size A | Size B | Size C |
+|----------|--------|--------|--------|
+| CONNECTION LIMIT (long-running backend) | 15 | 30 | 50-100 |
+| Prisma `connection_limit` (serverless) | 3-5 | 5-10 | 10-15 |
+| Prisma `connection_limit` (long-running) | 5-10 | 10-15 | 15-25 |
+| Prisma `pool_timeout` | 10s | 15s | 15s |
+
+```sql
+-- Size A (NestJS backend)
+ALTER ROLE app_user CONNECTION LIMIT 15;
+
+-- Size B (NestJS backend)
+ALTER ROLE app_user CONNECTION LIMIT 30;
+
+-- Size C (NestJS backend, несколько инстансов)
+ALTER ROLE app_user CONNECTION LIMIT 55;
+```
+
+---
+
+### Таймауты на уровне роли Postgres
+
+> Defence-in-depth: таймауты на уровне роли дополняют application-level таймауты из `18-reliability.mdc`.
+
+```sql
+-- ⏱️ statement_timeout — максимальное время одного запроса
+-- ⏱️ idle_in_transaction_session_timeout — убить idle транзакцию
+-- ⏱️ lock_timeout — максимальное ожидание блокировки
+```
+
+#### Таблица значений по размерам и сценариям
+
+| Параметр | Size A (serverless) | Size A (backend) | Size B | Size C |
+|----------|--------------------|-----------------:|-------:|-------:|
+| `statement_timeout` | `10s` | `15s` | `30s` | `30s` |
+| `idle_in_transaction_session_timeout` | `20s` | `30s` | `60s` | `60s` |
+| `lock_timeout` | `5s` | `5s` | `10s` | `10s` |
+
+#### Size A — Малый проект
+
+```sql
+-- Vercel serverless (жёсткие лимиты — serverless functions имеют свой timeout)
+ALTER ROLE app_user SET statement_timeout = '10s';
+ALTER ROLE app_user SET idle_in_transaction_session_timeout = '20s';
+ALTER ROLE app_user SET lock_timeout = '5s';
+```
+
+```sql
+-- NestJS backend (чуть мягче)
+ALTER ROLE app_user SET statement_timeout = '15s';
+ALTER ROLE app_user SET idle_in_transaction_session_timeout = '30s';
+ALTER ROLE app_user SET lock_timeout = '5s';
+```
+
+#### Size B — Средний проект
+
+```sql
+ALTER ROLE app_user SET statement_timeout = '30s';
+ALTER ROLE app_user SET idle_in_transaction_session_timeout = '60s';
+ALTER ROLE app_user SET lock_timeout = '10s';
+```
+
+#### Size C — Крупный проект
+
+```sql
+-- app_user — такие же как Size B
+ALTER ROLE app_user SET statement_timeout = '30s';
+ALTER ROLE app_user SET idle_in_transaction_session_timeout = '60s';
+ALTER ROLE app_user SET lock_timeout = '10s';
+
+-- analytics_user — мягкие лимиты для отчётов
+ALTER ROLE analytics_user SET statement_timeout = '5min';
+ALTER ROLE analytics_user SET idle_in_transaction_session_timeout = '5min';
+ALTER ROLE analytics_user SET lock_timeout = '30s';
+```
+
+---
+
+### Настройка .env для разделения ролей
+
+#### Vercel Fullstack (Size A/B)
+
+```bash
+# Runtime — app_user через pooler
+DATABASE_URL="postgresql://app_user:pass@ep-xxx-pooler.neon.tech/neondb?sslmode=require&connection_limit=5&pool_timeout=10"
+
+# Миграции — owner напрямую (только CI/CD и ручные операции)
+DIRECT_URL="postgresql://neon_owner:pass@ep-xxx.neon.tech/neondb?sslmode=require"
+```
+
+#### Vercel Frontend + NestJS Backend (Size B/C)
+
+```bash
+# NestJS (.env на Render/Railway) — app_user через pooler
+DATABASE_URL="postgresql://app_user:pass@ep-xxx-pooler.neon.tech/neondb?sslmode=require&connection_limit=10&pool_timeout=15"
+
+# Миграции в CI/CD — owner
+DIRECT_URL="postgresql://neon_owner:pass@ep-xxx.neon.tech/neondb?sslmode=require"
+```
+
+---
+
+### ⚠️ Подводные камни
+
+#### 1. DEFAULT PRIVILEGES и Prisma migrate
+
+`ALTER DEFAULT PRIVILEGES` применяется только к таблицам, созданным **текущим пользователем**. Убедитесь что:
+- `ALTER DEFAULT PRIVILEGES` выполняется от имени того же owner, который запускает `prisma migrate deploy`
+- После каждой миграции `app_user` автоматически получает доступ к новым таблицам
+
+#### 2. Neon Branching и роли
+
+При создании Neon branch роли **копируются** с данными, но:
+- Пароли ролей, созданных вручную, **могут не работать** в preview branches через Vercel Integration
+- Решение для Size A/B: используйте один пароль `app_user` для всех branches
+- Решение для Size C: скрипт в CI, который пересоздаёт/проверяет роли в каждом branch
+
+```bash
+# CI скрипт для preview branches (Size C)
+neonctl query "DO \$\$ BEGIN
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'app_user') THEN
+    CREATE ROLE app_user WITH LOGIN PASSWORD '$APP_USER_PASSWORD';
+  END IF;
+END \$\$;" --project-id $NEON_PROJECT_ID --branch $BRANCH_NAME
+```
+
+#### 3. idle_in_transaction и Prisma interactive transactions
+
+Prisma `$transaction(async (tx) => { ... })` держит транзакцию открытой на время callback. Если внутри есть внешние вызовы (API payment, email) — можно вылететь по `idle_in_transaction_session_timeout`.
+
+```typescript
+// ❌ ПЛОХО — внешний вызов внутри транзакции
+await prisma.$transaction(async (tx) => {
+  const order = await tx.order.create({ data: orderData });
+  await paymentService.charge(order.id); // Может зависнуть!
+  await tx.order.update({ where: { id: order.id }, data: { status: 'PAID' } });
+});
+
+// ✅ ПРАВИЛЬНО — внешние вызовы вне транзакции
+const order = await prisma.order.create({ data: orderData });
+const payment = await paymentService.charge(order.id);
+await prisma.order.update({ where: { id: order.id }, data: { status: 'PAID' } });
+```
+
+#### 4. CONNECTION LIMIT и autoscaling
+
+При росте инстансов (Size B → C) нужно пересматривать `CONNECTION LIMIT`:
+- Мониторьте `pg_stat_activity` или Neon Dashboard → Connections
+- Алерт если использование > 80% лимита
+- Обновляйте лимит ДО масштабирования инстансов
+
+---
+
 ## 📋 CHECKLIST
 
 ### Перед production
@@ -823,6 +1077,32 @@ datasource db {
 - [ ] Backup настроен *(автоматически если Neon)*
 - [ ] **Restore testing проведён** *(не требуется если Neon)*
 - [ ] **RTO/RPO определены** *(Neon: RPO ~0, RTO минуты)*
+
+### Роли и лимиты Checklist
+
+#### Все проекты (A/B/C)
+
+- [ ] `app_user` создан с DML-only правами
+- [ ] `DEFAULT PRIVILEGES` настроены от имени owner
+- [ ] `DATABASE_URL` использует `app_user` (не owner)
+- [ ] `DIRECT_URL` использует owner (только для миграций)
+- [ ] `statement_timeout` установлен на `app_user`
+- [ ] `idle_in_transaction_session_timeout` установлен на `app_user`
+- [ ] `lock_timeout` установлен на `app_user`
+- [ ] Пароль `app_user` сгенерирован криптографически (`openssl rand -base64 32`)
+
+#### Средние и крупные проекты (B/C)
+
+- [ ] `readonly_user` создан *(для аналитики/поддержки)*
+- [ ] `CONNECTION LIMIT` установлен *(если long-running backend)*
+- [ ] Формула лимита задокументирована *(инстансы × пул + запас)*
+
+#### Крупные проекты (C)
+
+- [ ] `analytics_user` создан *(если нужны длинные отчёты)*
+- [ ] CI скрипт для создания ролей в preview branches
+- [ ] Мониторинг `pg_stat_activity` настроен
+- [ ] Алерт на > 80% использования CONNECTION LIMIT
 
 ### Backup Checklist (self-hosted)
 
@@ -844,5 +1124,5 @@ datasource db {
 
 ---
 
-**Версия:** 1.2
-**Дата:** 2025-01-31
+**Версия:** 1.3
+**Дата:** 2025-02-12
