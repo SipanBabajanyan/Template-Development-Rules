@@ -339,14 +339,26 @@ User 1──* Order *──* Product
 
 ## 🚀 ЭТАП 3: ИНИЦИАЛИЗАЦИЯ
 
+### Шаг 3.0: Выбор package manager
+
+> **Рекомендация:** pnpm — быстрее установка, строгий node_modules, экономит место на диске.
+> Спроси разработчика и зафиксируй выбор в docs/02-TECH_STACK.md.
+
+```bash
+# Если pnpm (рекомендуется)
+corepack enable && corepack prepare pnpm@latest --activate
+
+# Если npm — ок, работай с npm
+```
+
 ### Шаг 3.1: Создание проекта
 
 ```bash
-# Next.js проект
-npx create-next-app@latest project-name --typescript --tailwind --eslint --app --src-dir
+# Next.js проект (pnpm)
+pnpm create next-app@latest project-name --typescript --tailwind --eslint --app --src-dir
 
 # Или с Turborepo (для C)
-npx create-turbo@latest
+pnpm dlx create-turbo@latest
 ```
 
 ### Шаг 3.2: Создаваемые файлы
@@ -500,13 +512,20 @@ src/
 ### Шаг 3.5: Шаблон .env.example
 
 ```bash
-# Database
-DATABASE_URL="postgresql://user:password@localhost:5432/dbname"
-DIRECT_URL="postgresql://user:password@localhost:5432/dbname"  # For migrations
+# Database (app_user для runtime, owner для миграций — см. 06-database)
+DATABASE_URL="postgresql://app_user:password@ep-xxx-pooler.neon.tech/neondb?sslmode=require"
+DIRECT_URL="postgresql://neon_owner:password@ep-xxx.neon.tech/neondb?sslmode=require"
 
 # Auth
-NEXTAUTH_SECRET="your-secret-here"
-NEXTAUTH_URL="http://localhost:3000"
+AUTH_SECRET="your-secret-here"            # Auth.js (NextAuth v5)
+AUTH_URL="http://localhost:3000"
+
+# Cloudflare R2 (обязательно — см. 08-security)
+R2_ACCOUNT_ID=""
+R2_ACCESS_KEY_ID=""
+R2_SECRET_ACCESS_KEY=""
+R2_BUCKET_NAME=""
+R2_PUBLIC_URL=""
 
 # External APIs (if needed)
 # STRIPE_SECRET_KEY=""
@@ -705,5 +724,5 @@ project/
 
 ---
 
-**Версия:** 1.0
-**Дата:** 2025-01-31
+**Версия:** 1.1
+**Дата:** 2025-02-12

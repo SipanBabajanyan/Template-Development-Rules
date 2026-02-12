@@ -121,7 +121,76 @@ describe('OrderService', () => {
 
 ## 🔗 INTEGRATION ТЕСТЫ
 
-### API тесты (NestJS)
+### API тесты — Next.js Route Handlers
+
+```typescript
+// __tests__/api/products.test.ts
+import { describe, it, expect, beforeEach } from 'vitest';
+import { GET, POST } from '@/app/api/products/route';
+import { NextRequest } from 'next/server';
+import { prisma } from '@/lib/prisma';
+
+describe('GET /api/products', () => {
+  beforeEach(async () => {
+    await prisma.product.deleteMany();
+  });
+
+  it('should return empty list', async () => {
+    const req = new NextRequest('http://localhost/api/products');
+    const res = await GET(req);
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.data).toEqual([]);
+    expect(body.meta.total).toBe(0);
+  });
+
+  it('should return products with pagination', async () => {
+    await prisma.product.createMany({
+      data: [
+        { name: 'Product 1', price: 1000 },
+        { name: 'Product 2', price: 2000 },
+      ],
+    });
+
+    const req = new NextRequest('http://localhost/api/products?page=1&limit=1');
+    const res = await GET(req);
+    const body = await res.json();
+
+    expect(body.data).toHaveLength(1);
+    expect(body.meta.total).toBe(2);
+  });
+});
+
+describe('POST /api/products', () => {
+  it('should create product', async () => {
+    const req = new NextRequest('http://localhost/api/products', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'New Product', price: 5000, categoryId: 'cat-123' }),
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    const res = await POST(req);
+    const body = await res.json();
+
+    expect(res.status).toBe(201);
+    expect(body.data.name).toBe('New Product');
+  });
+
+  it('should return 422 for invalid data', async () => {
+    const req = new NextRequest('http://localhost/api/products', {
+      method: 'POST',
+      body: JSON.stringify({ name: '' }),
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(422);
+  });
+});
+```
+
+### API тесты — NestJS (supertest)
 
 ```typescript
 import { Test } from '@nestjs/testing';
@@ -229,14 +298,14 @@ import { renderHook, act, waitFor } from '@testing-library/react';
 import { useProducts } from './useProducts';
 
 // Mock API
-jest.mock('@/lib/api', () => ({
-  fetchProducts: jest.fn(),
+vi.mock('@/lib/api', () => ({
+  fetchProducts: vi.fn(),
 }));
 
 describe('useProducts', () => {
   it('should fetch products on mount', async () => {
     const mockProducts = [{ id: '1', name: 'Product 1' }];
-    (fetchProducts as jest.Mock).mockResolvedValue(mockProducts);
+    (fetchProducts as ReturnType<typeof vi.fn>).mockResolvedValue(mockProducts);
     
     const { result } = renderHook(() => useProducts());
     
@@ -343,8 +412,8 @@ test.describe('Checkout Flow', () => {
 ### Mock функций
 
 ```typescript
-// ✅ Jest mock
-const mockFn = jest.fn();
+// ✅ Vitest mock (vi.fn — аналог jest.fn)
+const mockFn = vi.fn();
 mockFn.mockReturnValue(42);
 mockFn.mockResolvedValue({ data: [] });
 mockFn.mockRejectedValue(new Error('Failed'));
@@ -361,21 +430,21 @@ expect(mockFn).toHaveBeenCalledTimes(3);
 // __mocks__/prisma.ts
 export const prisma = {
   user: {
-    findUnique: jest.fn(),
-    findMany: jest.fn(),
-    create: jest.fn(),
-    update: jest.fn(),
-    delete: jest.fn(),
+    findUnique: vi.fn(),
+    findMany: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
   },
-  $transaction: jest.fn((fn) => fn(prisma)),
+  $transaction: vi.fn((fn) => fn(prisma)),
 };
 
 // В тесте
-jest.mock('@/lib/prisma', () => require('./__mocks__/prisma'));
+vi.mock('@/lib/prisma', () => import('./__mocks__/prisma'));
 
 it('should find user by id', async () => {
   const mockUser = { id: '1', name: 'John' };
-  (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
+  (prisma.user.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(mockUser);
   
   const result = await userService.findById('1');
   
@@ -487,5 +556,5 @@ tests/
 
 ---
 
-**Версия:** 1.0
-**Дата:** 2025-01-31
+**Версия:** 1.1
+**Дата:** 2025-02-12

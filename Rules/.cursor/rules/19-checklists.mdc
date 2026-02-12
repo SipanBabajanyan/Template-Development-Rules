@@ -86,6 +86,16 @@ alwaysApply: false
 - [ ] Транзакции для связанных операций
 - [ ] Soft delete для важных данных
 - [ ] Пагинация для списков
+- [ ] **Роли и лимиты (все проекты):**
+  - [ ] `app_user` создан с DML-only правами
+  - [ ] `DATABASE_URL` использует `app_user` (не owner)
+  - [ ] `DIRECT_URL` использует owner (только миграции)
+  - [ ] `statement_timeout` установлен *(значение адаптивное)*
+  - [ ] `idle_in_transaction_session_timeout` установлен
+  - [ ] `lock_timeout` установлен
+- [ ] **Роли и лимиты (Size B/C):**
+  - [ ] `readonly_user` создан (аналитика/поддержка)
+  - [ ] `CONNECTION LIMIT` для long-running backend *(значение адаптивное)*
 - [ ] **Если Neon:**
   - [ ] Connection pooling включён
   - [ ] `directUrl` для миграций
@@ -518,9 +528,14 @@ alwaysApply: false
 - [ ] Environment variables задокументированы
 
 ## База данных
-- [ ] Prisma/Drizzle настроен
+- [ ] Prisma настроен
 - [ ] Начальная схема создана
 - [ ] Neon подключён (если используется)
+- [ ] `app_user` создан (см. 06-database)
+
+## Хранилище файлов
+- [ ] Cloudflare R2 подключён (env vars заполнены)
+- [ ] `public/` используется только для статических ассетов (favicon, robots.txt)
 
 ## Безопасность
 - [ ] Нет секретов в коде
@@ -591,5 +606,5 @@ alwaysApply: false
 
 ---
 
-**Версия:** 2.0
-**Дата:** 2025-01-31
+**Версия:** 2.1
+**Дата:** 2025-02-12
