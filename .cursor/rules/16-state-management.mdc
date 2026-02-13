@@ -395,10 +395,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
 const productSchema = z.object({
-  name: z.string().min(1, 'Название обязательно').max(255),
+  name: z.string().min(1, 'Անունը պարտադիր է').max(255),
   description: z.string().max(5000).optional(),
-  price: z.number().min(0, 'Цена не может быть отрицательной'),
-  categoryId: z.string().uuid('Выберите категорию'),
+  price: z.number().min(0, 'Գինը չի կարող բացասական լինել'),
+  categoryId: z.string().uuid('Ընտրի՛ր կատեգորիա'),
   isActive: z.boolean().default(true),
 });
 
@@ -431,7 +431,7 @@ export function ProductForm({ defaultValues, onSubmit }: Props) {
       await onSubmit(data);
       reset();
     } catch (error) {
-      // Ошибка обрабатывается выше
+      // Սխալը մշակվում է վերևում
     }
   };
 
@@ -439,7 +439,7 @@ export function ProductForm({ defaultValues, onSubmit }: Props) {
     <form onSubmit={handleSubmit(onSubmitHandler)} className="space-y-4">
       <div>
         <label htmlFor="name" className="block text-sm font-medium">
-          Название
+          Անուն
         </label>
         <input
           {...register('name')}
@@ -453,7 +453,7 @@ export function ProductForm({ defaultValues, onSubmit }: Props) {
 
       <div>
         <label htmlFor="price" className="block text-sm font-medium">
-          Цена
+          Գին
         </label>
         <input
           {...register('price', { valueAsNumber: true })}
@@ -471,7 +471,7 @@ export function ProductForm({ defaultValues, onSubmit }: Props) {
         disabled={isSubmitting}
         className="w-full rounded-md bg-primary-600 py-2 text-white disabled:opacity-50"
       >
-        {isSubmitting ? 'Сохранение...' : 'Сохранить'}
+        {isSubmitting ? 'Պահպանվում է...' : 'Պահպանել'}
       </button>
     </form>
   );
@@ -481,7 +481,7 @@ export function ProductForm({ defaultValues, onSubmit }: Props) {
 ### Form с React Query
 
 ```tsx
-// Интеграция формы с мутацией
+// Ձևի ինտեգրացիա mutation-ի հետ
 export function CreateProductForm() {
   const createProduct = useCreateProduct();
   
@@ -492,7 +492,7 @@ export function CreateProductForm() {
   return (
     <ProductForm 
       onSubmit={handleSubmit}
-      // Показываем ошибку от сервера
+      // Ցուցադրում ենք սերվերից սխալը
       serverError={createProduct.error?.message}
     />
   );
@@ -503,12 +503,12 @@ export function CreateProductForm() {
 
 ## 🔗 URL STATE
 
-### Когда использовать
+### Երբ օգտագործել
 
-- Фильтры и сортировка
-- Пагинация
-- Состояние которое должно сохраняться в URL
-- Shareable состояние
+- Ֆիլտրեր և սորտավորում
+- Պագինացիա
+- Վիճակ, որը պետք է URL-ում պահպանվի
+- Shareable վիճակ
 
 ### useSearchParams (Next.js)
 
@@ -524,12 +524,12 @@ export function ProductFilters() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   
-  // Текущие значения из URL
+  // Ընթացիկ արժեքներ URL-ից
   const category = searchParams.get('category') ?? '';
   const sort = searchParams.get('sort') ?? 'createdAt';
   const page = Number(searchParams.get('page')) || 1;
 
-  // Обновление URL
+  // URL-ի թարմացում
   const updateFilters = useCallback(
     (updates: Record<string, string | number | null>) => {
       const params = new URLSearchParams(searchParams.toString());
@@ -542,7 +542,7 @@ export function ProductFilters() {
         }
       });
       
-      // Сбрасываем страницу при изменении фильтров
+      // Թարմացնում ենք էջը ֆիլտրերի փոփոխության դեպքում
       if (!('page' in updates)) {
         params.delete('page');
       }
@@ -558,18 +558,18 @@ export function ProductFilters() {
         value={category}
         onChange={(e) => updateFilters({ category: e.target.value })}
       >
-        <option value="">Все категории</option>
-        <option value="electronics">Электроника</option>
-        <option value="clothing">Одежда</option>
+        <option value="">Բոլոր կատեգորիաները</option>
+        <option value="electronics">Էլեկտրոնիկա</option>
+        <option value="clothing">Հագուստ</option>
       </select>
 
       <select
         value={sort}
         onChange={(e) => updateFilters({ sort: e.target.value })}
       >
-        <option value="createdAt">По дате</option>
-        <option value="price">По цене</option>
-        <option value="name">По названию</option>
+        <option value="createdAt">Ըստ ամսաթվի</option>
+        <option value="price">Ըստ գնի</option>
+        <option value="name">Ըստ անվան</option>
       </select>
     </div>
   );
@@ -579,7 +579,7 @@ export function ProductFilters() {
 ### nuqs (Type-safe URL state)
 
 ```tsx
-// Более удобный способ с nuqs
+// nuqs-ով ավելի հարմար եղանակ
 import { useQueryState, parseAsInteger, parseAsString } from 'nuqs';
 
 export function ProductFilters() {
@@ -593,8 +593,8 @@ export function ProductFilters() {
         value={category ?? ''}
         onChange={(e) => setCategory(e.target.value || null)}
       >
-        <option value="">Все категории</option>
-        <option value="electronics">Электроника</option>
+        <option value="">Բոլոր կատեգորիաները</option>
+        <option value="electronics">Էլեկտրոնիկա</option>
       </select>
       
       <Pagination
@@ -608,12 +608,12 @@ export function ProductFilters() {
 
 ---
 
-## 🚫 АНТИПАТТЕРНЫ
+## 🚫 ԱՆՏԻՊԱԹԵՐՆԵՐ
 
-### ❌ Не делай
+### ❌ Մի արա
 
 ```tsx
-// ❌ Server data в глобальном сторе
+// ❌ Server data գլոբալ store-ում
 const useStore = create((set) => ({
   products: [],
   fetchProducts: async () => {
@@ -622,39 +622,39 @@ const useStore = create((set) => ({
   },
 }));
 
-// ❌ Дублирование состояния
-const [localUser, setLocalUser] = useState(user); // user уже есть!
+// ❌ Վիճակի կրկնօրինակում
+const [localUser, setLocalUser] = useState(user); // user արդեն կա։
 
-// ❌ Derived state в useState
+// ❌ Derived state useState-ում
 const [total, setTotal] = useState(0);
 useEffect(() => {
   setTotal(items.reduce((sum, i) => sum + i.price, 0));
 }, [items]);
 
-// ❌ Слишком много в глобальном сторе
+// ❌ Չափից շատ գլոբալ store-ում
 const useStore = create((set) => ({
   user: null,
   products: [],
   orders: [],
   cart: [],
   notifications: [],
-  // ... всё в одном месте
+  // ... ամեն ինչ մի տեղում
 }));
 ```
 
-### ✅ Делай
+### ✅ Արա
 
 ```tsx
-// ✅ Server data через React Query
+// ✅ Server data React Query-ով
 const { data: products } = useProducts();
 
-// ✅ Используй исходные данные
+// ✅ Օգտագործի՛ր աղբյուրի տվյալները
 <UserProfile user={user} />
 
 // ✅ Derive state
 const total = items.reduce((sum, i) => sum + i.price, 0);
 
-// ✅ Разделяй сторы по доменам
+// ✅ Բաժանի՛ր store-երը ըստ դոմենների
 const useCartStore = create(...);
 const useUIStore = create(...);
 const useAuthStore = create(...);
@@ -662,52 +662,52 @@ const useAuthStore = create(...);
 
 ---
 
-## 📋 ВЫБОР ТИПА СОСТОЯНИЯ
+## 📋 ՎԻՃԱԿԻ ՏԻՊԻ ԸՆՏՐՈՒԹՅՈՒՆ
 
 ```markdown
-## Дерево решений
+## Որոշումների ծառ
 
-Данные с сервера?
-├── Да → React Query / SWR
-└── Нет
-    └── Нужно в URL?
-        ├── Да → useSearchParams / nuqs
-        └── Нет
-            └── Нужно глобально?
-                ├── Да → Zustand
-                └── Нет
-                    └── Данные формы?
-                        ├── Да → React Hook Form
-                        └── Нет → useState
+Տվյալներ սերվերից՞
+├── Այո → React Query / SWR
+└── Ոչ
+    └── URL-ում պե՞տք է
+        ├── Այո → useSearchParams / nuqs
+        └── Ոչ
+            └── Գլոբալ՞
+                ├── Այո → Zustand
+                └── Ոչ
+                    └── Ձևի տվյալնե՞ր
+                        ├── Այո → React Hook Form
+                        └── Ոչ → useState
 ```
 
 ---
 
 ## 📋 CHECKLIST
 
-### Общие правила
+### Ընդհանուր կանոններ
 
-- [ ] Server state в React Query
-- [ ] Client state в Zustand (если нужно глобально)
-- [ ] Form state в React Hook Form
-- [ ] URL state для фильтров/пагинации
-- [ ] Derive state вместо дублирования
-- [ ] Селекторы для оптимизации ререндеров
+- [ ] Server state React Query-ում
+- [ ] Client state Zustand-ում (եթե գլոբալ է պետք)
+- [ ] Form state React Hook Form-ում
+- [ ] URL state ֆիլտրեր/պագինացիայի համար
+- [ ] Derive state կրկնօրինակման փոխարեն
+- [ ] Սելեկտորներ rerender-ների օպտիմիզացիայի համար
 
 ### React Query
 
-- [ ] Query Keys централизованы
-- [ ] staleTime/gcTime настроены
-- [ ] Optimistic updates где нужно
-- [ ] Error handling настроен
+- [ ] Query Keys-ը կենտրոնացված են
+- [ ] staleTime/gcTime կարգավորված են
+- [ ] Optimistic updates որտեղ անհրաժեշտ է
+- [ ] Error handling կարգավորված է
 
 ### Zustand
 
-- [ ] Сторы разделены по доменам
-- [ ] persist для нужных данных
-- [ ] Селекторы для granular updates
+- [ ] Store-երը բաժանված են ըստ դոմենների
+- [ ] persist անհրաժեշտ տվյալների համար
+- [ ] Սելեկտորներ granular update-ների համար
 
 ---
 
-**Версия:** 1.0
-**Дата:** 2026-02-12
+**Տարբերակ.** 1.0
+**Ամսաթիվ.** 2026-02-12
