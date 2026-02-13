@@ -6,35 +6,35 @@ alwaysApply: false
 
 # ՎԻՃԱԿԻ ԿԱՌԱՎԱՐՄԱՆ ԿԱՆՈՆՆԵՐ
 
-> Правильное состояние в правильном месте. Не всё нужно хранить в глобальном сторе.
+> Ճիշտ վիճակ ճիշտ տեղում։ Ամեն ինչ պետք չէ պահել գլոբալ store-ում։
 
 ---
 
-## 🎯 ГЛАВНЫЕ ПРИНЦИПЫ
+## 🎯 ՀԻՄՆԱԿԱՆ ՍԿԶԲՈՒՆՔՆԵՐ
 
-1. **Минимум состояния** — derive когда возможно
-2. **Colocation** — состояние ближе к использованию
-3. **Разделение типов** — server state ≠ client state
-4. **Single Source of Truth** — один источник правды
+1. **Նվազագույն վիճակ** — derive երբ հնարավոր է
+2. **Colocation** — վիճակը մոտ օգտագործմանը
+3. **Տիպերի բաժանում** — server state ≠ client state
+4. **Single Source of Truth** — մեկ ճշմարտության աղբյուր
 
 ---
 
-## 📊 ТИПЫ СОСТОЯНИЯ
+## 📊 ՎԻՃԱԿԻ ՏԻՊԵՐ
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                      ТИПЫ СОСТОЯНИЯ                         │
+│                      ՎԻՃԱԿԻ ՏԻՊԵՐ                          │
 ├─────────────────┬─────────────────┬─────────────────────────┤
 │  SERVER STATE   │  CLIENT STATE   │     FORM STATE          │
 │                 │                 │                         │
-│  Данные с API   │  UI состояние   │  Данные формы           │
+│  API-ից տվյալներ│  UI վիճակ       │  Ձևի տվյալներ          │
 │  React Query    │  Zustand        │  React Hook Form        │
 │  SWR            │  Context        │  Formik                 │
 │                 │  useState       │                         │
 ├─────────────────┴─────────────────┴─────────────────────────┤
 │                       URL STATE                             │
 │                                                             │
-│  Фильтры, пагинация, модальные окна                         │
+│  Ֆիլտրեր, պագինացիա, մոդալ պատուհաններ                    │
 │  useSearchParams, nuqs                                      │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -43,13 +43,13 @@ alwaysApply: false
 
 ## 🌐 SERVER STATE (React Query)
 
-### Когда использовать
+### Երբ օգտագործել
 
-- Данные с API/backend
-- Данные которые нужно кэшировать
-- Данные которые синхронизируются между вкладками
+- API/backend-ից տվյալներ
+- Տվյալներ, որոնք պետք է cache անել
+- Տվյալներ, որոնք սինխրոնացվում են tab-երի միջև
 
-### Базовая настройка
+### Հիմնական կարգավորում
 
 ```typescript
 // lib/query-client.ts
@@ -58,10 +58,10 @@ import { QueryClient } from '@tanstack/react-query';
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60,        // 1 минута — данные свежие
-      gcTime: 1000 * 60 * 5,       // 5 минут — хранить в кэше
-      retry: 1,                    // 1 ретрай на ошибку
-      refetchOnWindowFocus: false, // Не рефетчить при фокусе
+      staleTime: 1000 * 60,        // 1 րոպե — տվյալները թարմ
+      gcTime: 1000 * 60 * 5,       // 5 րոպե — պահել cache-ում
+      retry: 1,                    // 1 retry սխալի դեպքում
+      refetchOnWindowFocus: false, // Ֆոկուսի դեպքում refetch չանել
     },
     mutations: {
       retry: 0,
@@ -78,7 +78,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { productApi } from '../api/productApi';
 import type { ProductFilters, CreateProductDTO } from '../types';
 
-// Query Keys — централизованно
+// Query Keys — կենտրոնացված
 export const productKeys = {
   all: ['products'] as const,
   lists: () => [...productKeys.all, 'list'] as const,
@@ -87,39 +87,39 @@ export const productKeys = {
   detail: (id: string) => [...productKeys.details(), id] as const,
 };
 
-// Получение списка
+// Ցանկի ստացում
 export function useProducts(filters: ProductFilters) {
   return useQuery({
     queryKey: productKeys.list(filters),
     queryFn: () => productApi.getList(filters),
-    // Placeholder пока грузится
+    // Placeholder մինչև բեռնումը
     placeholderData: (previousData) => previousData,
   });
 }
 
-// Получение одного продукта
+// Մեկ ապրանքի ստացում
 export function useProduct(id: string) {
   return useQuery({
     queryKey: productKeys.detail(id),
     queryFn: () => productApi.getById(id),
-    enabled: !!id, // Не запускать если нет id
+    enabled: !!id, // Չգործարկել, եթե id չկա
   });
 }
 
-// Создание продукта
+// Ապրանքի ստեղծում
 export function useCreateProduct() {
   const queryClient = useQueryClient();
   
   return useMutation({
     mutationFn: (data: CreateProductDTO) => productApi.create(data),
     onSuccess: () => {
-      // Инвалидируем списки
+      // Ինվալիդացնում ենք ցանկերը
       queryClient.invalidateQueries({ queryKey: productKeys.lists() });
     },
   });
 }
 
-// Обновление продукта
+// Ապրանքի թարմացում
 export function useUpdateProduct() {
   const queryClient = useQueryClient();
   
@@ -127,27 +127,27 @@ export function useUpdateProduct() {
     mutationFn: ({ id, data }: { id: string; data: UpdateProductDTO }) => 
       productApi.update(id, data),
     onSuccess: (updatedProduct) => {
-      // Обновляем кэш детальной страницы
+      // Թարմացնում ենք դետալ էջի cache-ը
       queryClient.setQueryData(
         productKeys.detail(updatedProduct.id),
         updatedProduct
       );
-      // Инвалидируем списки
+      // Ինվալիդացնում ենք ցանկերը
       queryClient.invalidateQueries({ queryKey: productKeys.lists() });
     },
   });
 }
 
-// Удаление
+// Ջնջում
 export function useDeleteProduct() {
   const queryClient = useQueryClient();
   
   return useMutation({
     mutationFn: (id: string) => productApi.delete(id),
     onSuccess: (_, deletedId) => {
-      // Удаляем из кэша
+      // Ջնջում cache-ից
       queryClient.removeQueries({ queryKey: productKeys.detail(deletedId) });
-      // Инвалидируем списки
+      // Ինվալիդացնում ենք ցանկերը
       queryClient.invalidateQueries({ queryKey: productKeys.lists() });
     },
   });
@@ -165,15 +165,15 @@ export function useToggleFavorite() {
     
     // Optimistic update
     onMutate: async (productId) => {
-      // Отменяем текущие запросы
+      // Չեղարկում ենք ընթացիկ հարցումները
       await queryClient.cancelQueries({ queryKey: productKeys.detail(productId) });
       
-      // Сохраняем предыдущее значение
+      // Պահպանում ենք նախորդ արժեքը
       const previousProduct = queryClient.getQueryData(
         productKeys.detail(productId)
       );
       
-      // Оптимистично обновляем
+      // Օպտիմիստիկ թարմացում
       queryClient.setQueryData(
         productKeys.detail(productId),
         (old: Product) => ({
@@ -185,7 +185,7 @@ export function useToggleFavorite() {
       return { previousProduct };
     },
     
-    // Откат при ошибке
+    // Հետարկում սխալի դեպքում
     onError: (err, productId, context) => {
       queryClient.setQueryData(
         productKeys.detail(productId),
@@ -193,7 +193,7 @@ export function useToggleFavorite() {
       );
     },
     
-    // Синхронизация после мутации
+    // Սինխրոնացում mutation-ից հետո
     onSettled: (_, __, productId) => {
       queryClient.invalidateQueries({ queryKey: productKeys.detail(productId) });
     },
@@ -205,14 +205,14 @@ export function useToggleFavorite() {
 
 ## 🏠 CLIENT STATE (Zustand)
 
-### Когда использовать
+### Երբ օգտագործել
 
-- UI состояние (тема, sidebar открыт)
-- Корзина покупок
-- Данные авторизованного пользователя
-- Состояние которое НЕ с сервера
+- UI վիճակ (թեմա, sidebar բաց)
+- Գնման զամբյուղ
+- Աուտորիզացված օգտատիրոջ տվյալներ
+- Վիճակ, որը սերվերից ՉԷ
 
-### Базовый store
+### Հիմնական store
 
 ```typescript
 // store/useCartStore.ts
@@ -291,12 +291,12 @@ export const useCartStore = create<CartState & CartActions>()(
     {
       name: 'cart-storage',
       storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({ items: state.items }), // Только items в storage
+      partialize: (state) => ({ items: state.items }), // Միայն items storage-ում
     }
   )
 );
 
-// Селекторы (вычисляемые значения)
+// Սելեկտորներ (հաշվարկված արժեքներ)
 export const useCartTotal = () =>
   useCartStore((state) =>
     state.items.reduce((sum, item) => sum + item.price * item.quantity, 0)
@@ -308,7 +308,7 @@ export const useCartItemCount = () =>
   );
 ```
 
-### Использование
+### Օգտագործում
 
 ```tsx
 // components/CartButton.tsx
@@ -333,7 +333,7 @@ export function CartButton() {
 }
 ```
 
-### Store для UI состояния
+### Store UI վիճակի համար
 
 ```typescript
 // store/useUIStore.ts
@@ -378,13 +378,13 @@ export const useUIStore = create<UIState & UIActions>((set) => ({
 
 ## 📝 FORM STATE (React Hook Form)
 
-### Когда использовать
+### Երբ օգտագործել
 
-- Любые формы
-- Валидация
-- Сложная логика форм
+- Ցանկացած ձև
+- Վալիդացիա
+- Ձևերի բարդ լոգիկա
 
-### Базовая форма
+### Հիմնական ձև
 
 ```tsx
 // components/ProductForm.tsx
