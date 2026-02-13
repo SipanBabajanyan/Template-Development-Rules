@@ -1,58 +1,58 @@
-# Auth — Полная настройка
+# Auth — Ամբողջական կարգավորում
 
-> Аутентификация: Auth.js (основной) для Next.js, Passport.js + JWT для NestJS.
-> Clerk — альтернатива для SaaS-проектов, где нужен готовый UI.
+> Աուտենտիֆիկացիա. Auth.js (հիմնական) Next.js-ի, Passport.js + JWT NestJS-ի համար։
+> Clerk — այլընտրանք SaaS-նախագծերի համար, որտեղ պատրաստի UI է պետք։
 
 ---
 
-## 📋 СОДЕРЖАНИЕ
+## 📋 ԲՈՎԱՆԴԱԿՈՒԹՅՈՒՆ
 
-### Auth.js (основной — бесплатный, open-source)
-1. [Настройка Auth.js](#authjs-setup)
+### Auth.js (հիմնական — անվճար, open-source)
+1. [Auth.js-ի կարգավորում](#authjs-setup)
 2. [Providers](#authjs-providers)
 3. [Database Adapter](#authjs-database)
-4. [Защита routes](#authjs-protection)
+4. [Routes-ի պաշտպանություն](#authjs-protection)
 
 ### NestJS Backend (Passport.js + JWT)
-5. [Связь стеков: Auth.js → NestJS](#cross-stack)
+5. [Ստեքների կապ. Auth.js → NestJS](#cross-stack)
 
-### Clerk (альтернатива для SaaS)
-6. [Когда использовать Clerk](#clerk-when)
-7. [Настройка Clerk](#clerk-setup)
+### Clerk (այլընտրանք SaaS-ի համար)
+6. [Երբ օգտագործել Clerk](#clerk-when)
+7. [Clerk-ի կարգավորում](#clerk-setup)
 
 8. [Checklist](#checklist)
 
 ---
 
-## Выбор Auth-решения
+## Auth-լուծման ընտրություն
 
-| Критерий | Auth.js | Clerk |
+| Չափանիշ | Auth.js | Clerk |
 |----------|---------|-------|
-| Стоимость | Бесплатно | $0 → $25+/мес |
-| Open-source | Да | Нет (SaaS) |
-| Next.js интеграция | Нативная (App Router) | SDK |
-| Готовый UI | Нет (свой) | Да (компоненты) |
+| Ծախս | Անվճար | $0 → $25+/ամիս |
+| Open-source | Այո | Ոչ (SaaS) |
+| Next.js ինտեգրացիա | Native (App Router) | SDK |
+| Պատրաստի UI | Ոչ (սեփական) | Այո (կոմպոնենտներ) |
 | NestJS backend | JWT → Passport.js | Webhook sync |
-| Зависимость от третьей стороны | Нет | Да |
-| Кастомизация | Полная | Ограниченная |
+| Երրորդ կողմից կախվածություն | Ոչ | Այո |
+| Կաստոմիզացիա | Լիակատար | Սահմանափակ |
 
-**Рекомендация:**
-- **Auth.js** — для большинства проектов (бесплатен, полный контроль, нативный Next.js)
-- **Clerk** — когда нужен готовый UI для auth и управление пользователями из коробки (SaaS)
+**Խորհուրդ.**
+- **Auth.js** — նախագծերի մեծամասնության համար (անվճար, ամբողջական վերահսկում, native Next.js)
+- **Clerk** — երբ auth-ի պատրաստի UI և օգտատերերի կառավարում out-of-the-box է պետք (SaaS)
 
 ---
 
-# AUTH.JS (ОСНОВНОЙ)
+# AUTH.JS (ՀԻՄՆԱԿԱՆ)
 
-## 1. Настройка Auth.js {#authjs-setup}
+## 1. Auth.js-ի կարգավորում {#authjs-setup}
 
-### Установка:
+### Տեղադրում.
 
 ```bash
 pnpm add next-auth@beta @auth/prisma-adapter
 ```
 
-### Конфигурация:
+### Կոնֆիգուրացիա.
 
 ```typescript
 // auth.ts
@@ -129,7 +129,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 AUTH_SECRET="your-secret-here"          # openssl rand -base64 32
 AUTH_URL="http://localhost:3000"
 
-# Providers (добавь нужные)
+# Providers (ավելացրու՛ անհրաժեշտները)
 GITHUB_CLIENT_ID=""
 GITHUB_CLIENT_SECRET=""
 GOOGLE_CLIENT_ID=""
@@ -201,7 +201,7 @@ model User {
   email         String?   @unique
   emailVerified DateTime?
   image         String?
-  password      String?   // Для Credentials provider
+  password      String?   // Credentials provider-ի համար
   role          Role      @default(USER)
   accounts      Account[]
   sessions      Session[]
@@ -253,7 +253,7 @@ enum Role {
 
 ---
 
-## 4. Защита routes {#authjs-protection}
+## 4. Routes-ի պաշտպանություն {#authjs-protection}
 
 ### Server Component:
 
@@ -271,7 +271,7 @@ export default async function DashboardPage() {
 
   return (
     <div>
-      <h1>Привет, {session.user.name}!</h1>
+      <h1>Բարև, {session.user.name}!</h1>
       <p>Email: {session.user.email}</p>
     </div>
   );
@@ -302,14 +302,14 @@ export async function GET() {
 
 ---
 
-## 5. Связь стеков: Auth.js → NestJS {#cross-stack}
+## 5. Ստեքների կապ. Auth.js → NestJS {#cross-stack}
 
-Когда Next.js (frontend) + NestJS (backend) — используй JWT для связи:
+Երբ Next.js (frontend) + NestJS (backend) — օգտագործի՛ր JWT կապի համար.
 
-### Auth.js — выдаёт JWT:
+### Auth.js — թողարկում է JWT.
 
 ```typescript
-// auth.ts — добавить в callbacks
+// auth.ts — ավելացնել callbacks-ում
 callbacks: {
   jwt: async ({ token, user }) => {
     if (user) {
@@ -330,7 +330,7 @@ callbacks: {
 session: { strategy: 'jwt' },
 ```
 
-### NestJS — валидирует тот же JWT:
+### NestJS — վալիդացնում է նույն JWT-ը.
 
 ```typescript
 // auth/jwt.strategy.ts (NestJS)
@@ -343,7 +343,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor() {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      secretOrKey: process.env.AUTH_SECRET, // Тот же секрет что в Auth.js
+      secretOrKey: process.env.AUTH_SECRET, // Նույն secret-ը, ինչ Auth.js-ում
     });
   }
 
@@ -353,23 +353,23 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 }
 ```
 
-> AUTH_SECRET должен быть **одинаковым** в Next.js и NestJS для валидации JWT.
+> AUTH_SECRET-ը **նույնը** պետք է լինի Next.js-ում և NestJS-ում JWT-ի վալիդացիայի համար։
 
 ---
 
-# CLERK (АЛЬТЕРНАТИВА)
+# CLERK (ԱՅԼԸՆՏՐԱՆՔ)
 
-## 6. Когда использовать Clerk {#clerk-when}
+## 6. Երբ օգտագործել Clerk {#clerk-when}
 
-Clerk подходит когда:
-- Нужен **готовый UI** для auth (формы, компоненты, user management)
-- Проект — **SaaS** с управлением организациями
-- Нет времени на кастомный auth UI
-- Бюджет позволяет ($25+/мес на Pro)
+Clerk-ը հարմար է, երբ.
+- Պետք է **պատրաստի UI** auth-ի համար (ձևեր, կոմպոնենտներ, user management)
+- Նախագիծը **SaaS** է կազմակերպությունների կառավարումով
+- Ժամանակ չկա custom auth UI-ի համար
+- Բյուջեն թույլ է տալիս ($25+/ամիս Pro-ում)
 
-### Pricing:
+### Pricing.
 
-| План | Стоимость | MAU |
+| Պլան | Ծախս | MAU |
 |------|-----------|-----|
 | Free | $0 | 10,000 |
 | Pro | $25/month | 10,000 + $0.02/MAU |
@@ -377,9 +377,9 @@ Clerk подходит когда:
 
 ---
 
-## 7. Настройка Clerk {#clerk-setup}
+## 7. Clerk-ի կարգավորում {#clerk-setup}
 
-### Установка:
+### Տեղադրում.
 
 ```bash
 pnpm add @clerk/nextjs
@@ -437,45 +437,45 @@ export default function RootLayout({
 }
 ```
 
-> Полная документация Clerk: [clerk.com/docs](https://clerk.com/docs)
+> Clerk-ի ամբողջական փաստաթղթեր. [clerk.com/docs](https://clerk.com/docs)
 
 ---
 
-## ✅ Checklist {#checklist}
+## ✅ Ստուգացուցակ {#checklist}
 
-### Auth.js (основной):
+### Auth.js (հիմնական).
 
-- [ ] `next-auth@beta` установлен (`pnpm add next-auth@beta`)
-- [ ] `auth.ts` настроен
-- [ ] Providers настроены (GitHub, Google и т.д.)
-- [ ] `@auth/prisma-adapter` настроен
-- [ ] Middleware настроен
-- [ ] `AUTH_SECRET` добавлен в `.env`
-- [ ] Prisma schema содержит User, Account, Session, VerificationToken
-- [ ] Protected routes работают
+- [ ] `next-auth@beta` տեղադրված է (`pnpm add next-auth@beta`)
+- [ ] `auth.ts` կարգավորված է
+- [ ] Providers կարգավորված են (GitHub, Google և այլն)
+- [ ] `@auth/prisma-adapter` կարգավորված է
+- [ ] Middleware կարգավորված է
+- [ ] `AUTH_SECRET` ավելացված է `.env`-ում
+- [ ] Prisma schema-ում կան User, Account, Session, VerificationToken
+- [ ] Protected routes աշխատում են
 
-### NestJS backend (если есть):
+### NestJS backend (եթե կա).
 
-- [ ] Passport.js + JWT strategy настроены
-- [ ] `AUTH_SECRET` одинаковый в Next.js и NestJS
-- [ ] JWT Guards работают
+- [ ] Passport.js + JWT strategy կարգավորված են
+- [ ] `AUTH_SECRET` նույնն է Next.js-ում և NestJS-ում
+- [ ] JWT Guards աշխատում են
 
-### Clerk (если выбран):
+### Clerk (եթե ընտրված է).
 
-- [ ] `@clerk/nextjs` установлен
-- [ ] Ключи добавлены в `.env`
-- [ ] `ClerkProvider` в layout
-- [ ] Middleware настроен
-- [ ] Webhooks настроены (синхронизация с БД)
+- [ ] `@clerk/nextjs` տեղադրված է
+- [ ] Բանալիներ ավելացված են `.env`-ում
+- [ ] `ClerkProvider` layout-ում
+- [ ] Middleware կարգավորված է
+- [ ] Webhooks կարգավորված են (ԲԴ-ի հետ սինխրոնացում)
 
-### Общее:
+### Ընդհանուր.
 
-- [ ] Protected routes работают
-- [ ] User data синхронизируется с БД
-- [ ] Sign out работает
-- [ ] Error handling настроен
+- [ ] Protected routes աշխատում են
+- [ ] User data սինխրոնացվում է ԲԴ-ի հետ
+- [ ] Sign out աշխատում է
+- [ ] Error handling կարգավորված է
 
 ---
 
-**Версия:** 2.0
-**Дата:** 2026-02-12
+**Տարբերակ.** 2.0
+**Ամսաթիվ.** 2026-02-12
