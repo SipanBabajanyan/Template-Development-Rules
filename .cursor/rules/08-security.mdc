@@ -15,38 +15,38 @@ alwaysApply: false
 ### ԵՐԵՔԵԼԵՎ մի՛ արա
 
 ```typescript
-// ❌ НИКОГДА — секреты в коде
+// ❌ ԵՐԵՔԵԼԵՎ — գաղտնիքներ կոդում
 const API_KEY = 'sk_live_abc123';
 const DB_PASSWORD = 'mypassword';
 
-// ❌ НИКОГДА — SQL инъекции
+// ❌ ԵՐԵՔԵԼԵՎ — SQL ինժեկցիաներ
 const query = `SELECT * FROM users WHERE id = ${userId}`;
 await db.$queryRawUnsafe(query);
 
-// ❌ НИКОГДА — eval и подобные
+// ❌ ԵՐԵՔԵԼԵՎ — eval և նմաններ
 eval(userInput);
 new Function(userInput)();
 
-// ❌ НИКОГДА — отключение безопасности
-app.use(cors({ origin: '*' })); // Только для dev!
-// CSRF отключен
+// ❌ ԵՐԵՔԵԼԵՎ — անվտանգության անջատում
+app.use(cors({ origin: '*' })); // Միայն dev-ի համար
+// CSRF-ն անջատված է
 
-// ❌ НИКОГДА — логирование секретов
+// ❌ ԵՐԵՔԵԼԵՎ — գաղտնիքների լոգավորում
 console.log('Password:', password);
 logger.info({ token: accessToken });
 ```
 
 ---
 
-## 🔐 АУТЕНТИФИКАЦИЯ
+## 🔐 ՆՎԻՐԱԳՐՈՒՄ (AUTHENTICATION)
 
-### Пароли
+### Գաղտնաբառեր
 
 ```typescript
-// ✅ Хэширование паролей
+// ✅ Գաղտնաբառերի հեշավորում
 import { hash, verify, argon2id } from 'argon2';
 
-// Хэширование при регистрации
+// Հեշավորում գրանցման ժամանակ
 const passwordHash = await hash(password, {
   type: argon2id,
   memoryCost: 65536,  // 64 MB
@@ -54,55 +54,55 @@ const passwordHash = await hash(password, {
   parallelism: 4,
 });
 
-// Проверка при логине
+// Ստուգում մուտքի ժամանակ
 const isValid = await verify(user.passwordHash, password);
 
-// ❌ НИКОГДА
-const passwordHash = md5(password);     // Слабый алгоритм
-const passwordHash = sha256(password);  // Без salt
+// ❌ ԵՐԵՔԵԼԵՎ
+const passwordHash = md5(password);     // Թույլ ալգորիթմ
+const passwordHash = sha256(password);  // Առանց salt
 ```
 
-### JWT Токены
+### JWT Թոքեններ
 
 ```typescript
-// ✅ Правильная настройка JWT (HS256 + symmetric secret)
+// ✅ JWT-ի ճիշտ կարգավորում (HS256 + symmetric secret)
 import jwt from 'jsonwebtoken';
 
 const accessToken = jwt.sign(
   { userId: user.id, role: user.role },
   process.env.JWT_SECRET!,
   { 
-    expiresIn: '15m',           // Короткий срок
-    algorithm: 'HS256',         // Симметричный алгоритм (secret string)
+    expiresIn: '15m',           // Կարճ ժամկետ
+    algorithm: 'HS256',         // Սիմետրիկ ալգորիթմ (secret string)
     issuer: 'api.example.com',
     audience: 'example.com',
   }
 );
 
-// Refresh token — длинный срок, хранить в БД
+// Refresh token — երկար ժամկետ, պահել ԲԴ-ում
 const refreshToken = jwt.sign(
   { userId: user.id, tokenId: uuid() },
   process.env.JWT_REFRESH_SECRET!,
   { expiresIn: '7d' }
 );
 
-// Если нужен RS256 (асимметричный) — используй key pair:
+// Եթե RS256 (ասիմետրիկ) է պետք — օգտագործի՛ր key pair
 // const accessToken = jwt.sign(payload, privateKey, { algorithm: 'RS256' });
 
-// ❌ НЕПРАВИЛЬНО
-const token = jwt.sign(payload, 'secret'); // Слабый секрет
-jwt.sign(payload, secret, { expiresIn: '30d' }); // Слишком долго для access
+// ❌ ՍԽԱԼ
+const token = jwt.sign(payload, 'secret'); // Թույլ գաղտնիք
+jwt.sign(payload, secret, { expiresIn: '30d' }); // Չափից երկար access-ի համար
 ```
 
-### Сессии
+### Սեսիաներ
 
 ```typescript
-// ✅ Безопасные куки для сессий
+// ✅ Անվտանգ cookie-ներ սեսիաների համար
 res.cookie('sessionId', sessionId, {
-  httpOnly: true,     // Недоступен из JS
-  secure: true,       // Только HTTPS
-  sameSite: 'strict', // Защита от CSRF
-  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 дней
+  httpOnly: true,     // JS-ից հասանելի չէ
+  secure: true,      // Միայն HTTPS
+  sameSite: 'strict', // CSRF-ից պաշտպանություն
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 օր
   path: '/',
   domain: '.example.com',
 });
@@ -110,12 +110,12 @@ res.cookie('sessionId', sessionId, {
 
 ---
 
-## 🛡️ ЗАЩИТА ОТ АТАК
+## 🛡️ ՊԱՇՏՊԱՆՈՒԹՅՈՒՆ ՀԱՄԱՐԿԻՑ
 
 ### XSS (Cross-Site Scripting)
 
 ```typescript
-// ✅ Экранирование вывода
+// ✅ Ելքի էկրանավորում
 import { escape } from 'html-escaper';
 
 const safeHtml = escape(userInput);
@@ -133,23 +133,23 @@ app.use(helmet({
   },
 }));
 
-// ✅ React автоматически экранирует
-return <div>{userInput}</div>; // Безопасно
+// ✅ React-ը ավտոմատ էկրանավորում է
+return <div>{userInput}</div>; // Անվտանգ
 
-// ❌ ОПАСНО — dangerouslySetInnerHTML
+// ❌ ՎՏԱՆԳԱՎՈՐ — dangerouslySetInnerHTML
 <div dangerouslySetInnerHTML={{ __html: userInput }} />
 ```
 
 ### CSRF (Cross-Site Request Forgery)
 
 ```typescript
-// ✅ Next.js — Server Actions имеют встроенную CSRF-защиту
-// (origin проверяется автоматически, SameSite cookies)
-// Дополнительно — SameSite cookies для сессий:
+// ✅ Next.js — Server Actions-ը ունեն ներկառուցված CSRF-պաշտպանություն
+// (origin-ը ստուգվում է ավտոմատ, SameSite cookies)
+// Լրացուցիչ — SameSite cookies սեսիաների համար
 cookies().set('session', value, { sameSite: 'strict', httpOnly: true, secure: true });
 
-// ✅ NestJS — кастомный CSRF guard
-// Вариант 1: Double Submit Cookie
+// ✅ NestJS — սեփական CSRF guard
+// Տարբերակ 1. Double Submit Cookie
 @Injectable()
 export class CsrfGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
@@ -163,26 +163,26 @@ export class CsrfGuard implements CanActivate {
   }
 }
 
-// ✅ SameSite cookies (оба стека)
+// ✅ SameSite cookies (երկու stack-ի համար)
 res.cookie('session', value, { sameSite: 'strict' });
 ```
 
-> ⚠️ Пакет `csurf` deprecated (архивирован с 2022). Не используй его.
+> ⚠️ `csurf` փաթեթը deprecated է (արխիվացված 2022-ից)։ Չօգտագործել։
 
 ### SQL Injection
 
 ```typescript
-// ✅ Prisma автоматически защищает
+// ✅ Prisma-ն ավտոմատ պաշտպանում է
 const user = await prisma.user.findFirst({
-  where: { email: userInput }, // Безопасно
+  where: { email: userInput }, // Անվտանգ
 });
 
-// ✅ Параметризованные запросы
+// ✅ Պարամետրացված հարցումներ
 const result = await prisma.$queryRaw`
   SELECT * FROM users WHERE email = ${userInput}
-`; // Безопасно — Prisma экранирует
+`; // Անվտանգ — Prisma-ն էկրանավորում է
 
-// ❌ НИКОГДА
+// ❌ ԵՐԵՔԵԼԵՎ
 await prisma.$queryRawUnsafe(
   `SELECT * FROM users WHERE email = '${userInput}'`
 );
@@ -191,23 +191,23 @@ await prisma.$queryRawUnsafe(
 ### NoSQL Injection
 
 ```typescript
-// ✅ Валидация типов
+// ✅ Տիպերի վալիդացիա
 const userId = z.string().uuid().parse(userInput);
 
-// ❌ ОПАСНО — без валидации
+// ❌ ՎՏԱՆԳԱՎՈՐ — առանց վալիդացիայի
 const user = await db.findOne({ 
-  _id: userInput // Может быть { $ne: null }
+  _id: userInput // Կարող է լինել { $ne: null }
 });
 ```
 
 ---
 
-## 🔒 АВТОРИЗАЦИЯ
+## 🔒 ԱՎԹՈՐԻԶԱՑԻԱ (AUTHORIZATION)
 
 ### RBAC (Role-Based Access Control)
 
 ```typescript
-// ✅ Проверка ролей
+// ✅ Դերերի ստուգում
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('admin', 'manager')
 @Delete(':id')
@@ -215,7 +215,7 @@ async delete(@Param('id') id: string) {
   return this.service.delete(id);
 }
 
-// ✅ Проверка владельца ресурса
+// ✅ Ռեսուրսի սեփականատիրոջ ստուգում
 async updateOrder(orderId: string, userId: string, data: UpdateOrderDto) {
   const order = await this.prisma.order.findUnique({
     where: { id: orderId },
@@ -225,7 +225,7 @@ async updateOrder(orderId: string, userId: string, data: UpdateOrderDto) {
     throw new NotFoundException();
   }
   
-  // Проверка владельца
+  // Սեփականատիրոջ ստուգում
   if (order.userId !== userId) {
     throw new ForbiddenException('You can only edit your own orders');
   }
@@ -237,21 +237,21 @@ async updateOrder(orderId: string, userId: string, data: UpdateOrderDto) {
 }
 ```
 
-### Принцип минимальных привилегий
+### Նվազագույն արտոնությունների սկզբունք
 
 ```typescript
-// ✅ Возвращай только нужные поля
+// ✅ Վերադարձրու՛ միայն անհրաժեշտ դաշտերը
 const user = await prisma.user.findUnique({
   where: { id },
   select: {
     id: true,
     name: true,
     email: true,
-    // НЕ возвращай: passwordHash, role, internalNotes
+    // Չվերադարձնել. passwordHash, role, internalNotes
   },
 });
 
-// ✅ Разные DTO для разных уровней доступа
+// ✅ Տարբեր DTO տարբեր մուտքի մակարդակների համար
 export class UserPublicDto {
   id: string;
   name: string;
@@ -271,9 +271,9 @@ export class UserAdminDto extends UserPrivateDto {
 
 ---
 
-## 🔑 СЕКРЕТЫ
+## 🔑 ԳԱՂՏՆԻՔՆԵՐ
 
-### Хранение секретов
+### Գաղտնիքների պահպանում
 
 ```bash
 # ✅ Environment variables
@@ -281,31 +281,31 @@ DATABASE_URL=postgresql://...
 JWT_SECRET=very-long-random-string
 API_KEY=sk_live_...
 
-# .env файл в .gitignore
-# ❌ НИКОГДА не коммить .env
+# .env ֆայլը .gitignore-ում
+# ❌ ԵՐԵՔԵԼԵՎ .env commit չանել
 
-# ✅ Production — используй secrets manager
+# ✅ Production — օգտագործի՛ր secrets manager
 # - AWS Secrets Manager
 # - HashiCorp Vault
 # - Kubernetes Secrets
 ```
 
-### Генерация секретов
+### Գաղտնիքների գեներացիա
 
 ```bash
-# ✅ Криптографически стойкие секреты
-openssl rand -base64 32  # Для JWT_SECRET
-openssl rand -hex 32     # Для API ключей
+# ✅ Կրիպտոգրաֆիական ամուր գաղտնիքներ
+openssl rand -base64 32  # JWT_SECRET-ի համար
+openssl rand -hex 32     # API բանալիների համար
 
-# ❌ НИКОГДА
+# ❌ ԵՐԵՔԵԼԵՎ
 JWT_SECRET=secret
 JWT_SECRET=12345
 ```
 
-### Валидация env переменных
+### env փոփոխականների վալիդացիա
 
 ```typescript
-// ✅ Проверка при старте
+// ✅ Ստուգում մեկնարկի ժամանակ
 import { z } from 'zod';
 
 const envSchema = z.object({
@@ -321,12 +321,12 @@ export default env;
 
 ---
 
-## 📝 ВАЛИДАЦИЯ ВХОДНЫХ ДАННЫХ
+## 📝 ՄՈՒՏՔԱՅԻՆ ՏՎՅԱԼՆԵՐԻ ՎԱԼԻԴԱՑԻԱ
 
-### Общие правила
+### Ընդհանուր կանոններ
 
 ```typescript
-// ✅ Валидируй ВСЁ на входе
+// ✅ Վալիդացրու՛ ԱՄԲՈՂՋ մուտքը
 import { z } from 'zod';
 
 const createUserSchema = z.object({
@@ -335,54 +335,54 @@ const createUserSchema = z.object({
   name: z.string().min(1).max(100).optional(),
 });
 
-// ✅ Санитизация
+// ✅ Սանիտիզացիա
 const sanitizedInput = input
   .trim()
-  .replace(/[<>]/g, ''); // Удаляем HTML теги
+  .replace(/[<>]/g, ''); // HTML թեգերի հեռացում
 
-// ✅ Ограничения размера
+// ✅ Չափի սահմանափակումներ
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ limit: '1mb', extended: true }));
 ```
 
-### Загрузка файлов
+### Ֆայլերի բեռնում
 
 ```typescript
-// ✅ Проверка типа и размера
+// ✅ Տիպի և չափի ստուգում
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
 
 async function uploadFile(file: Express.Multer.File) {
-  // Проверка MIME type
+  // MIME type-ի ստուգում
   if (!ALLOWED_TYPES.includes(file.mimetype)) {
     throw new BadRequestException('Invalid file type');
   }
   
-  // Проверка размера
+  // Չափի ստուգում
   if (file.size > MAX_SIZE) {
     throw new BadRequestException('File too large');
   }
   
-  // Генерируй новое имя файла
+  // Ստեղծի՛ր նոր ֆայլի անուն
   const filename = `${uuid()}${path.extname(file.originalname)}`;
   
-  // НЕ используй originalname напрямую!
+  // originalname-ը ՈՉ օգտագործել ուղղակի
 }
 ```
 
 ---
 
-## 🌐 HTTPS И ЗАГОЛОВКИ
+## 🌐 HTTPS ԵՎ HEADERS
 
 ### Security Headers
 
 ```typescript
-// ✅ Используй helmet
+// ✅ Օգտագործի՛ր helmet
 import helmet from 'helmet';
 
 app.use(helmet());
 
-// Или настрой вручную
+// Կամ կարգավորի՛ր ձեռքով
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
@@ -396,7 +396,7 @@ app.use((req, res, next) => {
 ### CORS
 
 ```typescript
-// ✅ Правильная настройка CORS
+// ✅ CORS-ի ճիշտ կարգավորում
 app.use(cors({
   origin: [
     'https://example.com',
@@ -405,35 +405,35 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
-  maxAge: 86400, // 24 часа
+  maxAge: 86400, // 24 ժամ
 }));
 
-// ❌ НИКОГДА в production
+// ❌ ԵՐԵՔԵԼԵՎ production-ում
 app.use(cors({ origin: '*' }));
 ```
 
 ---
 
-## 📊 ЛОГИРОВАНИЕ
+## 📊 ԼՈԳԱՎՈՐՄԱՆ ԿԱՆՈՆՆԵՐ
 
-### Что логировать
+### Ինչ լոգավորել
 
 ```typescript
-// ✅ Логируй безопасные данные
+// ✅ Լոգավորի՛ր անվտանգ տվյալներ
 logger.info('User logged in', { userId: user.id, ip: req.ip });
 logger.warn('Failed login attempt', { email, ip: req.ip, attempts });
 logger.error('Payment failed', { orderId, errorCode });
 
-// ❌ НИКОГДА не логируй
-logger.info('Login', { email, password }); // Пароль!
-logger.debug('Token', { accessToken });    // Токен!
-logger.info('Card', { cardNumber });       // Платёжные данные!
+// ❌ ԵՐԵՔԵԼԵՎ մի լոգավորել
+logger.info('Login', { email, password }); // Գաղտնաբառ
+logger.debug('Token', { accessToken });    // Թոքեն
+logger.info('Card', { cardNumber });       // Վճարային տվյալներ
 ```
 
-### Маскирование данных
+### Տվյալների դիմակավորում
 
 ```typescript
-// ✅ Маскируй чувствительные данные
+// ✅ Դիմակավորի՛ր զգայուն տվյալները
 function maskEmail(email: string): string {
   const [local, domain] = email.split('@');
   return `${local[0]}***@${domain}`;
@@ -451,50 +451,50 @@ logger.info('Payment processed', {
 
 ---
 
-## 📋 SECURITY CHECKLIST
+## 📋 ԱՆՎՏԱՆԳՈՒԹՅԱՆ ՍՏՈՒԳԱՑՈՒՑԱԿ
 
-### Перед деплоем
+### Դեպլոյից առաջ
 
-- [ ] Все секреты в environment variables
-- [ ] .env в .gitignore
-- [ ] HTTPS включён
-- [ ] Security headers настроены
-- [ ] CORS ограничен
-- [ ] Rate limiting включён
-- [ ] Валидация всех входных данных
-- [ ] Пароли хэшируются (argon2/bcrypt)
-- [ ] JWT с коротким сроком жизни
-- [ ] Логирование без секретов
-- [ ] SQL injection защита (ORM)
-- [ ] XSS защита (CSP)
-- [ ] CSRF защита
+- [ ] Բոլոր գաղտնիքները environment variables-ում
+- [ ] .env-ն .gitignore-ում
+- [ ] HTTPS-ը միացված է
+- [ ] Security headers-ը կարգավորված են
+- [ ] CORS-ը սահմանափակված է
+- [ ] Rate limiting-ը միացված է
+- [ ] Բոլոր մուտքային տվյալների վալիդացիա
+- [ ] Գաղտնաբառերը հեշավորված են (argon2/bcrypt)
+- [ ] JWT կարճ ժամկետով
+- [ ] Լոգավորում առանց գաղտնիքների
+- [ ] SQL injection-ից պաշտպանություն (ORM)
+- [ ] XSS-ից պաշտպանություն (CSP)
+- [ ] CSRF-ից պաշտպանություն
 
-### Регулярно
+### Պարբերաբար
 
-- [ ] Обновление зависимостей (npm audit)
-- [ ] Проверка на уязвимости
-- [ ] Ревью прав доступа
-- [ ] Проверка логов
-
----
+- [ ] Կախվածությունների թարմացում (npm audit)
+- [ ] Խոցելիությունների ստուգում
+- [ ] Մուտքի իրավունքների վերանայում
+- [ ] Լոգերի ստուգում
 
 ---
 
-## ☁️ ХРАНИЛИЩЕ ФАЙЛОВ (CLOUDFLARE R2)
+---
 
-> Cloudflare R2 — дефолтное хранилище для всех проектов. `public/` только для статических ассетов (favicon, robots.txt, og-image).
+## ☁️ ՖԱՅԼԵՐԻ ՊԱՀՊԱՆՈՒՄ (CLOUDFLARE R2)
 
-### Env variables (обязательны при старте проекта)
+> Cloudflare R2 — բոլոր նախագծերի լռելյայն պահոցը։ `public/` միայն ստատիկ ասետների համար (favicon, robots.txt, og-image)։
+
+### Env variables (պարտադիր նախագծի մեկնարկին)
 
 ```bash
 R2_ACCOUNT_ID="your_account_id"
 R2_ACCESS_KEY_ID="your_access_key"
 R2_SECRET_ACCESS_KEY="your_secret_key"
 R2_BUCKET_NAME="your_bucket_name"
-R2_PUBLIC_URL="https://pub-xxx.r2.dev"  # или custom domain
+R2_PUBLIC_URL="https://pub-xxx.r2.dev"  # կամ custom domain
 ```
 
-### S3-compatible клиент (общий для обоих стеков)
+### S3-համատեղելի կլիենտ (երկու stack-ի համար ընդհանուր)
 
 ```typescript
 // lib/r2.ts
@@ -536,7 +536,7 @@ export async function POST(req: NextRequest) {
   const file = formData.get('file') as File;
   if (!file) return NextResponse.json({ error: 'No file' }, { status: 400 });
 
-  // Валидация типа и размера
+  // Տիպի և չափի վալիդացիա
   if (!ALLOWED_TYPES.includes(file.type)) {
     return NextResponse.json({ error: 'File type not allowed' }, { status: 400 });
   }
@@ -553,7 +553,7 @@ export async function POST(req: NextRequest) {
 }
 ```
 
-### NestJS — Upload через Multer
+### NestJS — Upload Multer-ով
 
 ```typescript
 // files/files.controller.ts
@@ -564,7 +564,7 @@ export class FilesController {
   @Post('upload')
   @UseInterceptors(FileInterceptor('file'))
   async upload(@UploadedFile() file: Express.Multer.File) {
-    // Санитизируем имя файла (убираем спецсимволы, пробелы)
+    // Ֆայլի անվան սանիտիզացիա (հատուկ նիշեր, բացատների հեռացում)
     const safeName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
     const key = `uploads/${nanoid()}-${safeName}`;
     const url = await this.filesService.upload(key, file.buffer, file.mimetype);
@@ -573,15 +573,15 @@ export class FilesController {
 }
 ```
 
-### Правила
+### Կանոններ
 
-- ✅ Все пользовательские файлы → R2
-- ✅ `public/` → только favicon.ico, robots.txt, sitemap.xml, og-image
-- ✅ Env vars для R2 заполнены при старте проекта
-- ❌ Не хранить пользовательские файлы в public/
-- ❌ Не коммитить загруженные файлы в репозиторий
+- ✅ Բոլոր օգտատիրոջ ֆայլերը → R2
+- ✅ `public/` → միայն favicon.ico, robots.txt, sitemap.xml, og-image
+- ✅ R2-ի env vars-ը լրացված են նախագծի մեկնարկին
+- ❌ Օգտատիրոջ ֆայլեր public/-ում չպահել
+- ❌ Բեռնված ֆայլեր ռեպոզիտորիա commit չանել
 
 ---
 
-**Версия:** 1.1
-**Дата:** 2026-02-12
+**Տարբերակ.** 1.1
+**Ամսաթիվ.** 2026-02-12

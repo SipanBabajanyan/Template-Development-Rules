@@ -130,7 +130,7 @@
 | 8.7 | Լոգավորում | console (dev) / Pino (prod) | ⬜ | |
 | 8.8 | Շրջակա միջավայրեր | միայն prod / dev + prod / dev + staging + prod | ⬜ | Neon branches, Vercel env |
 | 8.9 | Դոմեն | Vercel ավտո / անհատական դոմեն | ⬜ | ազդում է CORS, AUTH_URL-ի վրա |
-| 8.10 | ԲԴ բэкапы | Neon auto (PITR) / լրացուցիչ | ⬜ | |
+| 8.10 | ԲԴ բեքափներ | Neon auto (PITR) / լրացուցիչ | ⬜ | |
 
 ---
 

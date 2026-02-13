@@ -45,26 +45,26 @@ alwaysApply: false
 
 ---
 
-## 🧪 UNIT ТЕСТЫ
+## 🧪 UNIT ԹԵՍՏԵՐ
 
-### Структура теста (AAA)
+### Թեստի կառուցվածք (AAA)
 
 ```typescript
 // Arrange-Act-Assert
 
 describe('calculateOrderTotal', () => {
   it('should calculate total with discount', () => {
-    // Arrange (Подготовка)
+    // Arrange (Նախապատրաստում)
     const items = [
       { price: 1000, quantity: 2 },
       { price: 500, quantity: 1 },
     ];
     const discount = 10; // 10%
     
-    // Act (Действие)
+    // Act (Գործողություն)
     const total = calculateOrderTotal(items, discount);
     
-    // Assert (Проверка)
+    // Assert (Ստուգում)
     expect(total).toBe(2250); // (2000 + 500) * 0.9
   });
   
@@ -78,22 +78,22 @@ describe('calculateOrderTotal', () => {
 });
 ```
 
-### Именование тестов
+### Թեստերի անվանավորում
 
 ```typescript
-// ✅ ХОРОШО — описывает поведение
+// ✅ ԼԱՎ — նկարագրում է վարքագիծը
 it('should return user by id when user exists')
 it('should throw NotFoundError when user does not exist')
 it('should hash password with argon2')
 it('should send confirmation email after order creation')
 
-// ❌ ПЛОХО — не описывает результат
+// ❌ ՎԱՏ — արդյունքը չի նկարագրում
 it('test getUser')
 it('getUser works')
 it('test 1')
 ```
 
-### Группировка тестов
+### Թեստերի խմբավորում
 
 ```typescript
 describe('OrderService', () => {
@@ -119,9 +119,9 @@ describe('OrderService', () => {
 
 ---
 
-## 🔗 INTEGRATION ТЕСТЫ
+## 🔗 INTEGRATION ԹԵՍՏԵՐ
 
-### API тесты — Next.js Route Handlers
+### API թեստեր — Next.js Route Handlers
 
 ```typescript
 // __tests__/api/products.test.ts
@@ -190,7 +190,7 @@ describe('POST /api/products', () => {
 });
 ```
 
-### API тесты — NestJS (supertest)
+### API թեստեր — NestJS (supertest)
 
 ```typescript
 import { Test } from '@nestjs/testing';
@@ -218,7 +218,7 @@ describe('ProductsController (e2e)', () => {
   });
   
   beforeEach(async () => {
-    // Очистка тестовых данных
+    // Թեստային տվյալների մաքրում
     await prisma.product.deleteMany();
   });
   
@@ -253,7 +253,7 @@ describe('ProductsController (e2e)', () => {
     });
   });
   
-  // Создаём тестовый JWT токен
+  // Ստեղծում ենք թեստային JWT թոքեն
   const adminToken = jwt.sign(
     { userId: 'test-admin', role: 'admin' },
     process.env.JWT_SECRET!,
@@ -298,7 +298,7 @@ describe('ProductsController (e2e)', () => {
 });
 ```
 
-### Тестирование хуков React
+### React հուկերի թեստավորում
 
 ```typescript
 import { renderHook, act, waitFor } from '@testing-library/react';
@@ -316,11 +316,11 @@ describe('useProducts', () => {
     
     const { result } = renderHook(() => useProducts());
     
-    // Начальное состояние
+    // Սկզբնական վիճակ
     expect(result.current.isLoading).toBe(true);
     expect(result.current.data).toBeUndefined();
     
-    // После загрузки
+    // Բեռնումից հետո
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
     });
@@ -351,7 +351,7 @@ describe('useProducts', () => {
       expect(result.current.isLoading).toBe(false);
     });
     
-    // Изменяем фильтры
+    // Փոխում ենք ֆիլտրերը
     rerender({ filters: { category: 'b' } });
     
     expect(fetchProducts).toHaveBeenCalledWith({ category: 'b' });
@@ -361,7 +361,7 @@ describe('useProducts', () => {
 
 ---
 
-## 🌐 E2E ТЕСТЫ
+## 🌐 E2E ԹԵՍՏԵՐ
 
 ### Playwright
 
@@ -375,37 +375,37 @@ test.describe('Checkout Flow', () => {
   });
   
   test('should complete checkout as guest', async ({ page }) => {
-    // Добавить товар в корзину
+    // Ավելացնել ապրանք զամբյուղ
     await page.goto('/products/iphone-15');
-    await page.click('button:has-text("В корзину")');
+    await page.click('button:has-text("Զամբյուղ")');
     
-    // Перейти в корзину
+    // Անցնել զամբյուղ
     await page.click('[data-testid="cart-icon"]');
     await expect(page.locator('.cart-item')).toHaveCount(1);
     
-    // Перейти к оформлению
-    await page.click('button:has-text("Оформить заказ")');
+    // Անցնել պատվերի ձևակերպման
+    await page.click('button:has-text("Ձևակերպել պատվեր")');
     
-    // Заполнить форму
+    // Լրացնել ձև
     await page.fill('[name="email"]', 'test@example.com');
     await page.fill('[name="phone"]', '+37498123456');
     await page.fill('[name="address"]', 'Test Address 123');
     
-    // Выбрать способ оплаты
+    // Ընտրել վճարման եղանակ
     await page.click('[data-testid="payment-card"]');
     
-    // Подтвердить заказ
-    await page.click('button:has-text("Оплатить")');
+    // Հաստատել պատվեր
+    await page.click('button:has-text("Վճարել")');
     
-    // Проверить успех
+    // Ստուգել հաջողությունը
     await expect(page).toHaveURL(/\/orders\/ORD-/);
-    await expect(page.locator('h1')).toContainText('Заказ оформлен');
+    await expect(page.locator('h1')).toContainText('Պատվերը ձևակերպված է');
   });
   
   test('should show error for invalid email', async ({ page }) => {
     await page.goto('/checkout');
     await page.fill('[name="email"]', 'invalid-email');
-    await page.click('button:has-text("Продолжить")');
+    await page.click('button:has-text("Շարունակել")');
     
     await expect(page.locator('.error-message')).toContainText('Invalid email');
   });
@@ -414,24 +414,24 @@ test.describe('Checkout Flow', () => {
 
 ---
 
-## 🎭 МОКИ И СТАБЫ
+## 🎭 ՄՈԿԵՐ ԵՎ ՍՏԱԲԵՐ
 
-### Mock функций
+### Ֆունկցիաների mock
 
 ```typescript
-// ✅ Vitest mock (vi.fn — аналог jest.fn)
+// ✅ Vitest mock (vi.fn — jest.fn-ի անալոգ)
 const mockFn = vi.fn();
 mockFn.mockReturnValue(42);
 mockFn.mockResolvedValue({ data: [] });
 mockFn.mockRejectedValue(new Error('Failed'));
 
-// Проверки
+// Ստուգումներ
 expect(mockFn).toHaveBeenCalled();
 expect(mockFn).toHaveBeenCalledWith('arg1', 'arg2');
 expect(mockFn).toHaveBeenCalledTimes(3);
 ```
 
-### Mock модулей
+### Մոդուլների mock
 
 ```typescript
 // __mocks__/prisma.ts
@@ -446,7 +446,7 @@ export const prisma = {
   $transaction: vi.fn((fn) => fn(prisma)),
 };
 
-// В тесте
+// Թեստում
 vi.mock('@/lib/prisma', () => import('./__mocks__/prisma'));
 
 it('should find user by id', async () => {
@@ -462,7 +462,7 @@ it('should find user by id', async () => {
 });
 ```
 
-### Фабрики тестовых данных
+### Թեստային տվյալների ֆաբրիկաներ
 
 ```typescript
 // tests/factories/user.factory.ts
@@ -491,77 +491,77 @@ export function createProduct(overrides: Partial<Product> = {}): Product {
   };
 }
 
-// Использование
+// Օգտագործում
 const user = createUser({ role: 'ADMIN' });
 const product = createProduct({ stock: 0 });
 ```
 
 ---
 
-## 📋 СТРУКТУРА ТЕСТОВ
+## 📋 ԹԵՍՏԵՐԻ ԿԱՌՈՒՑՎԱԾՔ
 
-### Расположение файлов
+### Ֆայլերի տեղաբաշխում
 
 ```
 src/
 ├── modules/
 │   └── products/
 │       ├── products.service.ts
-│       ├── products.service.spec.ts      # Unit тест рядом
+│       ├── products.service.spec.ts      # Unit թեստ կողքին
 │       ├── products.controller.ts
 │       └── products.controller.spec.ts
 │
 ├── lib/
 │   └── utils/
 │       ├── format.ts
-│       └── format.test.ts                # Unit тест рядом
+│       └── format.test.ts                # Unit թեստ կողքին
 │
 tests/
-├── integration/                          # Integration тесты
+├── integration/                          # Integration թեստեր
 │   ├── api/
 │   │   └── products.test.ts
 │   └── services/
 │       └── order-flow.test.ts
 │
-├── e2e/                                  # E2E тесты
+├── e2e/                                  # E2E թեստեր
 │   ├── checkout.spec.ts
 │   └── auth.spec.ts
 │
-├── fixtures/                             # Тестовые данные
+├── fixtures/                             # Թեստային տվյալներ
 │   ├── products.json
 │   └── users.json
 │
-├── factories/                            # Фабрики
+├── factories/                            # Ֆաբրիկաներ
 │   ├── user.factory.ts
 │   └── product.factory.ts
 │
-└── setup/                                # Настройка
+└── setup/                                # Կարգավորում
     ├── jest.setup.ts
     └── test-utils.tsx
 ```
 
 ---
 
-## 📋 CHECKLIST
+## 📋 ՍՏՈՒԳԱՑՈՒՑԱԿ
 
-### Перед мержем
+### Merge-ից առաջ
 
-- [ ] Все тесты проходят
-- [ ] Новая бизнес-логика покрыта тестами
-- [ ] API endpoints протестированы
-- [ ] Edge cases обработаны
-- [ ] Нет console.log в тестах
-- [ ] Тесты изолированы (не зависят друг от друга)
+- [ ] Բոլոր թեստերը անցնում են
+- [ ] Նոր բիզնես-լոգիկան ծածկված է թեստերով
+- [ ] API endpoints-ը թեստավորված են
+- [ ] Edge cases-ը մշակված են
+- [ ] console.log թեստերում չկա
+- [ ] Թեստերը մեկուսացված են (միմյանցից կախված չեն)
 
-### Качество тестов
+### Թեստերի որակ
 
-- [ ] Тест тестирует одно поведение
-- [ ] Имя теста описывает ожидаемое поведение
-- [ ] Используется AAA паттерн
-- [ ] Моки настроены правильно
-- [ ] Нет flaky тестов
+- [ ] Թեստը ստուգում է մեկ վարքագիծ
+- [ ] Թեստի անունը նկարագրում է ակնկալվող վարքագիծը
+- [ ] Օգտագործվում է AAA պատերն
+- [ ] Մոկերը ճիշտ կարգավորված են
+- [ ] Flaky թեստեր չկան
 
 ---
 
-**Версия:** 1.1
-**Дата:** 2026-02-12
+**Տարբերակ.** 1.1
+**Ամսաթիվ.** 2026-02-12

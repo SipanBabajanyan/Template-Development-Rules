@@ -6,27 +6,27 @@ alwaysApply: false
 
 # ՀՈՒՍԱԼԻՈՒԹՅԱՆ ԿԱՆՈՆՆԵՐ
 
-> Всё ломается. Вопрос в том, как система на это реагирует.
+> Ամեն ինչ կոտրվում է։ Հարցը նրանում է, թե ինչպես է համակարգը արձագանքում։
 
 ---
 
-## 🎯 ГЛАВНЫЕ ПРИНЦИПЫ
+## 🎯 ՀԻՄՆԱԿԱՆ ՍԿԶԲՈՒՆՔՆԵՐ
 
-1. **Fail Fast** — не жди вечно, ставь таймауты
-2. **Graceful Degradation** — работай даже при частичных отказах
-3. **Retry with Backoff** — повторяй умно, не DDoS-ь
-4. **Circuit Breaker** — защищай от каскадных сбоев
+1. **Fail Fast** — անվերջ մի սպասի, դիր timeout-եր
+2. **Graceful Degradation** — աշխատի՛ր նույնիսկ մասնակի խափանումների դեպքում
+3. **Retry with Backoff** — կրկնի՛ր խելացի, DDoS մի արա
+4. **Circuit Breaker** — պաշտպանի՛ր կասկադային խափանումներից
 
 ---
 
 ## ⏱️ TIMEOUTS
 
-### Правила таймаутов
+### Timeout-ների կանոններ
 
 ```typescript
-// ✅ ВСЕГДА ставь таймауты на внешние вызовы
+// ✅ ՄԻՇՏ դիր timeout-եր արտաքին կանչերի վրա
 
-// HTTP запросы
+// HTTP հարցումներ
 const controller = new AbortController();
 const timeout = setTimeout(() => controller.abort(), 5000);
 
@@ -38,11 +38,11 @@ try {
   clearTimeout(timeout);
 }
 
-// Или с библиотекой
+// Կամ գրադարանով
 import ky from 'ky';
 
 const api = ky.create({
-  timeout: 10000, // 10 секунд
+  timeout: 10000, // 10 վայրկյան
   retry: {
     limit: 2,
     methods: ['get'],
@@ -51,17 +51,17 @@ const api = ky.create({
 });
 ```
 
-### Рекомендуемые таймауты
+### Խորհուրդ տրվող timeout-եր
 
-| Операция | Timeout | Примечание |
+| Գործողություն | Timeout | Նշում |
 |----------|---------|------------|
-| API call (внутренний) | 5-10s | Между своими сервисами |
-| API call (внешний) | 10-30s | Сторонние сервисы |
-| Database query | 5-30s | Зависит от сложности |
-| File upload | 60-300s | Зависит от размера |
-| Payment processing | 30-60s | Критично, с retry |
+| API call (ներքին) | 5-10s | Սեփական սերվիսների միջև |
+| API call (արտաքին) | 10-30s | Երրորդ կողմի սերվիսներ |
+| Database query | 5-30s | Կախված բարդությունից |
+| File upload | 60-300s | Կախված չափից |
+| Payment processing | 30-60s | Կրիտիկ, retry-ով |
 
-### Таймауты в Prisma
+### Timeout-եր Prisma-ում
 
 ```typescript
 // prisma/schema.prisma
@@ -70,10 +70,10 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// В connection string
+// Connection string-ում
 // ?connection_limit=10&connect_timeout=10&pool_timeout=10
 
-// Или в коде
+// Կամ կոդում
 const prisma = new PrismaClient({
   datasources: {
     db: {
@@ -88,8 +88,8 @@ await prisma.$transaction(
     // operations
   },
   {
-    maxWait: 5000,  // Ждать транзакцию
-    timeout: 10000, // Timeout самой транзакции
+    maxWait: 5000,  // Սպասել transaction-ին
+    timeout: 10000, // Ինքը transaction-ի timeout
   }
 );
 ```
@@ -141,23 +141,23 @@ export async function withRetry<T>(
     } catch (error) {
       lastError = error as Error;
 
-      // Проверяем нужно ли ретраить
+      // Ստուգում՝ retry անելու need կա՞
       if (retryCondition && !retryCondition(lastError)) {
         throw lastError;
       }
 
-      // Последняя попытка — выбрасываем ошибку
+      // Վերջին փորձ — նետում ենք սխալը
       if (attempt === maxRetries) {
         throw lastError;
       }
 
-      // Вычисляем delay
+      // Հաշվում ենք delay
       let delay = Math.min(
         baseDelay * Math.pow(backoffFactor, attempt),
         maxDelay
       );
 
-      // Добавляем jitter (±10%)
+      // Ավելացնում ենք jitter (±10%)
       if (jitter) {
         const jitterAmount = delay * 0.1;
         delay += Math.random() * jitterAmount * 2 - jitterAmount;
@@ -179,20 +179,20 @@ function sleep(ms: number): Promise<void> {
 }
 ```
 
-### Использование
+### Օգտագործում
 
 ```typescript
-// Простой ретрай
+// Պարզ retry
 const data = await withRetry(() => fetchData(url));
 
-// С кастомной конфигурацией
+// Custom կոնֆիգով
 const data = await withRetry(
   () => processPayment(orderId),
   {
     maxRetries: 5,
     baseDelay: 2000,
     retryCondition: (error) => {
-      // Ретраим только на определённые ошибки
+      // Retry միայն որոշակի սխալների համար
       if (error instanceof ApiError) {
         return error.statusCode >= 500 || error.statusCode === 429;
       }
@@ -202,11 +202,11 @@ const data = await withRetry(
 );
 ```
 
-### Когда НЕ ретраить
+### Երբ retry Չանել
 
 ```typescript
-// ❌ НЕ ретраить:
-// - 4xx ошибки (кроме 429, 408)
+// ❌ Retry Չանել.
+// - 4xx սխալներ (բացի 429, 408)
 // - Validation errors
 // - Auth errors (401, 403)
 // - Business logic errors
@@ -222,21 +222,21 @@ const shouldRetry = (error: ApiError): boolean => {
 
 ## 🔌 CIRCUIT BREAKER
 
-### Паттерн Circuit Breaker
+### Circuit Breaker պաթեռն
 
 ```typescript
 // lib/utils/circuit-breaker.ts
 
 enum CircuitState {
-  CLOSED = 'CLOSED',   // Нормальная работа
-  OPEN = 'OPEN',       // Блокируем вызовы
-  HALF_OPEN = 'HALF_OPEN', // Пробуем восстановиться
+  CLOSED = 'CLOSED',   // Նորմալ աշխատանք
+  OPEN = 'OPEN',       // Կանչերը արգելափակում ենք
+  HALF_OPEN = 'HALF_OPEN', // Փորձում ենք վերականգնվել
 }
 
 interface CircuitBreakerConfig {
-  failureThreshold: number;  // Сколько ошибок до открытия
-  successThreshold: number;  // Сколько успехов для закрытия
-  timeout: number;           // Время в OPEN состоянии (ms)
+  failureThreshold: number;  // Քանի սխալ մինչև բացելը
+  successThreshold: number;  // Քանի հաջողություն փակելու համար
+  timeout: number;           // OPEN վիճակում ժամանակ (ms)
 }
 
 export class CircuitBreaker {
@@ -255,7 +255,7 @@ export class CircuitBreaker {
   ) {}
 
   async execute<T>(fn: () => Promise<T>): Promise<T> {
-    // Проверяем состояние
+    // Ստուգում ենք վիճակը
     if (this.state === CircuitState.OPEN) {
       if (this.shouldAttemptReset()) {
         this.state = CircuitState.HALF_OPEN;
@@ -321,10 +321,10 @@ class CircuitOpenError extends Error {
 }
 ```
 
-### Использование
+### Օգտագործում
 
 ```typescript
-// Создаём circuit breaker для каждого внешнего сервиса
+// Circuit breaker յուրաքանչյուր արտաքին սերվիսի համար
 const paymentCircuit = new CircuitBreaker('payment-service', {
   failureThreshold: 3,
   successThreshold: 2,
@@ -337,12 +337,12 @@ async function processPayment(orderId: string) {
   });
 }
 
-// При открытом circuit — graceful degradation
+// Բաց circuit-ի դեպքում — graceful degradation
 try {
   await processPayment(orderId);
 } catch (error) {
   if (error instanceof CircuitOpenError) {
-    // Альтернативный путь
+    // Այլընտրանքային ճանապարհ
     await queuePaymentForLater(orderId);
     return { status: 'queued' };
   }
@@ -357,10 +357,10 @@ try {
 ### Next.js — cleanup и health checks
 
 ```typescript
-// Next.js на Vercel = serverless. Graceful shutdown не нужен —
-// каждый запрос обрабатывается изолированно.
+// Next.js Vercel-ում = serverless. Graceful shutdown պետք չէ —
+// յուրաքանչյուր հարցում մշակվում է մեկուսացված։
 
-// Для Prisma в Next.js — singleton паттерн с cleanup
+// Prisma-ի համար Next.js-ում — singleton պաթեռն cleanup-ով
 // lib/prisma.ts
 import { PrismaClient } from '@prisma/client';
 
@@ -372,7 +372,7 @@ if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.prisma = prisma;
 }
 
-// Next.js health check (если нужен для external monitoring)
+// Next.js health check (անհրաժեշտ է external monitoring-ի համար)
 // app/api/health/route.ts
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
@@ -402,10 +402,10 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const port = process.env.PORT || 3000;
 
-  // Включаем shutdown hooks
+  // Միացնում ենք shutdown hooks
   app.enableShutdownHooks();
 
-  // Graceful shutdown обработчик
+  // Graceful shutdown մշակիչ
   const shutdown = async (signal: string) => {
     logger.log(`Received ${signal}. Starting graceful shutdown...`);
 
@@ -426,7 +426,7 @@ async function bootstrap() {
     }
   };
 
-  // Слушаем сигналы
+  // Լսում ենք signal-ները
   process.on('SIGTERM', () => shutdown('SIGTERM'));
   process.on('SIGINT', () => shutdown('SIGINT'));
 
@@ -437,7 +437,7 @@ async function bootstrap() {
 bootstrap();
 ```
 
-### NestJS — OnModuleDestroy для cleanup
+### NestJS — OnModuleDestroy cleanup-ի համար
 
 ```typescript
 // services/database.service.ts
@@ -476,21 +476,21 @@ export class RedisService implements OnModuleDestroy {
 export class HealthController {
   constructor(private readonly health: HealthCheckService) {}
 
-  // Liveness — приложение живо?
+  // Liveness — հավելվածը կենդանի՞
   @Get('live')
   @HealthCheck()
   liveness() {
     return { status: 'ok' };
   }
 
-  // Readiness — готово принимать трафик?
+  // Readiness — պատրաստ է traffic ընդունելու՞
   @Get('ready')
   @HealthCheck()
   readiness() {
     return this.health.check([
-      // Проверяем БД
+      // Ստուգում ենք ԲԴ-ը
       () => this.db.pingCheck('database'),
-      // Проверяем Redis
+      // Ստուգում ենք Redis-ը
       () => this.redis.pingCheck('redis'),
     ]);
   }
@@ -504,33 +504,33 @@ export class HealthController {
 ### Fallback
 
 ```typescript
-// При ошибке — используем fallback
+// Սխալի դեպքում — օգտագործում ենք fallback
 async function getProductRecommendations(userId: string): Promise<Product[]> {
   try {
     return await recommendationService.getPersonalized(userId);
   } catch (error) {
     logger.warn('Recommendation service failed, using fallback', { userId });
-    // Fallback на популярные товары
+    // Fallback — հայտնի ապրանքներ
     return await productService.getPopular();
   }
 }
 ```
 
-### Bulkhead (изоляция)
+### Bulkhead (մեկուսացում)
 
 ```typescript
-// Изолируем критичные операции
+// Մեկուսացնում ենք կրիտիկական գործողությունները
 import PQueue from 'p-queue';
 
-// Отдельные очереди для разных типов операций
+// Առանձին հերթեր տարբեր տիպի գործողությունների համար
 const paymentQueue = new PQueue({ concurrency: 10 });
 const emailQueue = new PQueue({ concurrency: 5 });
 const analyticsQueue = new PQueue({ concurrency: 20 });
 
-// Критичные операции не блокируются не-критичными
+// Կրիտիկական գործողությունները չեն արգելափակվում ոչ-կրիտիկականներով
 await paymentQueue.add(() => processPayment(order));
-emailQueue.add(() => sendConfirmationEmail(order));  // Не ждём
-analyticsQueue.add(() => trackPurchase(order));      // Не ждём
+emailQueue.add(() => sendConfirmationEmail(order));  // Սպասում չենք
+analyticsQueue.add(() => trackPurchase(order));      // Սպասում չենք
 ```
 
 ### Rate Limiting (Client Side)
@@ -538,13 +538,13 @@ analyticsQueue.add(() => trackPurchase(order));      // Не ждём
 ```typescript
 import Bottleneck from 'bottleneck';
 
-// Лимитируем запросы к внешнему API
+// Սահմանափակում ենք հարցումները արտաքին API-ին
 const limiter = new Bottleneck({
-  maxConcurrent: 5,      // Максимум 5 одновременных
-  minTime: 100,          // Минимум 100ms между запросами
-  reservoir: 100,        // 100 запросов
+  maxConcurrent: 5,      // Առավելագույնը 5 միաժամանակ
+  minTime: 100,          // Նվազագույն 100ms հարցումների միջև
+  reservoir: 100,        // 100 հարցում
   reservoirRefreshAmount: 100,
-  reservoirRefreshInterval: 60 * 1000, // Обновляем каждую минуту
+  reservoirRefreshInterval: 60 * 1000, // Թարմացնել ամեն րոպե
 });
 
 const response = await limiter.schedule(() => 
@@ -556,35 +556,35 @@ const response = await limiter.schedule(() =>
 
 ## 📋 CHECKLIST
 
-### Timeouts
+### Timeout-եր
 
-- [ ] Все внешние вызовы имеют таймауты
-- [ ] Database queries с таймаутами
-- [ ] HTTP requests с таймаутами
-- [ ] Таймауты адекватны операциям
+- [ ] Բոլոր արտաքին կանչերն ունեն timeout
+- [ ] Database query-ներ timeout-ով
+- [ ] HTTP request-ներ timeout-ով
+- [ ] Timeout-երը համապատասխանում են գործողություններին
 
-### Retries
+### Retry-ներ
 
-- [ ] Exponential backoff для ретраев
-- [ ] Jitter для предотвращения thundering herd
-- [ ] Ретрай только для recoverable ошибок
-- [ ] Лимит на количество ретраев
+- [ ] Exponential backoff retry-ների համար
+- [ ] Jitter thundering herd-ը կանխելու համար
+- [ ] Retry միայն recoverable սխալների համար
+- [ ] Սահման retry-ների քանակի վրա
 
 ### Graceful Shutdown
 
-- [ ] Обработка SIGTERM/SIGINT
-- [ ] Закрытие database connections
-- [ ] Завершение активных requests
-- [ ] Timeout на shutdown
+- [ ] SIGTERM/SIGINT-ի մշակում
+- [ ] Database connection-ների փակում
+- [ ] Ակտիվ request-ների ավարտում
+- [ ] Timeout shutdown-ի վրա
 
 ### Fault Tolerance
 
-- [ ] Circuit breakers для внешних сервисов
-- [ ] Fallbacks для non-critical features
-- [ ] Health checks (liveness/readiness)
-- [ ] Rate limiting для защиты
+- [ ] Circuit breaker-ներ արտաքին սերվիսների համար
+- [ ] Fallback-ներ non-critical ֆիչերի համար
+- [ ] Health check-եր (liveness/readiness)
+- [ ] Rate limiting պաշտպանության համար
 
 ---
 
-**Версия:** 1.1
-**Дата:** 2026-02-12
+**Տարբերակ.** 1.1
+**Ամսաթիվ.** 2026-02-12

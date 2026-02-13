@@ -6,20 +6,20 @@ alwaysApply: false
 
 # CI/CD-Ի ԿԱՆՈՆՆԵՐ
 
-> Автоматизация = консистентность. Каждый коммит проходит одинаковые проверки.
+> Ավտոմատացում = կոնսիստենտություն։ Յուրաքանչյուր commit անցնում է նույն ստուգումները։
 
 ---
 
-## 🎯 ГЛАВНЫЕ ПРИНЦИПЫ
+## 🎯 ՀԻՄՆԱԿԱՆ ՍԿԶԲՈՒՆՔՆԵՐ
 
-1. **Fail Fast** — ловим ошибки как можно раньше
-2. **Автоматизация** — минимум ручных действий
-3. **Reproducible** — одинаковый результат каждый раз
-4. **Безопасность** — секреты в GitHub Secrets
+1. **Fail Fast** — բռնում ենք սխալները որքան հնարավոր է շուտ
+2. **Ավտոմատացում** — նվազագույն ձեռքով գործողություններ
+3. **Reproducible** — նույն արդյունք ամեն անգամ
+4. **Անվտանգություն** — գաղտնիքները GitHub Secrets-ում
 
 ---
 
-## 📦 СТРУКТУРА ПАЙПЛАЙНА
+## 📦 PIPELINE-Ի ԿԱՐԳՈՒՑՎԱԿՔ
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -58,7 +58,7 @@ on:
   pull_request:
     branches: [main, develop]
 
-# Отменять предыдущие запуски для того же PR
+# Չեղարկել նախորդ գործարկումները նույն PR-ի համար
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -196,7 +196,7 @@ jobs:
       - name: Build
         run: pnpm build
         env:
-          # Минимальные env для сборки
+          # Նվազագույն env build-ի համար
           NEXT_PUBLIC_API_URL: https://api.example.com
 
       - name: Upload build artifacts
@@ -224,7 +224,7 @@ jobs:
 
       - name: Audit dependencies
         run: pnpm audit --prod
-        continue-on-error: true  # Не блокируем, но показываем
+        continue-on-error: true  # Չարգելափակենք, բայց ցույց տանք
 
       - name: Check for secrets
         uses: trufflesecurity/trufflehog@main
@@ -372,7 +372,7 @@ jobs:
 
 ```dockerfile
 # Dockerfile
-# Multi-stage build для минимального образа
+# Multi-stage build նվազագույն image-ի համար
 
 # ==========================================
 # DEPENDENCIES
@@ -380,14 +380,14 @@ jobs:
 FROM node:20-alpine AS deps
 WORKDIR /app
 
-# Устанавливаем зависимости для native modules
+# Native modules-ի կախվածություններ
 RUN apk add --no-cache libc6-compat
 
-# Копируем package files
+# Package ֆայլեր
 COPY package.json pnpm-lock.yaml ./
 COPY prisma ./prisma/
 
-# Устанавливаем зависимости
+# Կախվածություններ
 RUN corepack enable pnpm && pnpm install --frozen-lockfile
 
 # ==========================================
@@ -399,10 +399,10 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Генерируем Prisma Client
+# Prisma Client գեներացիա
 RUN corepack enable pnpm && pnpm prisma generate
 
-# Build приложения
+# Հավելվածի build
 ENV NEXT_TELEMETRY_DISABLED 1
 RUN pnpm build
 
@@ -415,17 +415,17 @@ WORKDIR /app
 ENV NODE_ENV production
 ENV NEXT_TELEMETRY_DISABLED 1
 
-# Создаём пользователя (не root)
+# Օգտատիրոջ ստեղծում (ոչ root)
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Копируем только необходимое
+# Միայն անհրաժեշտը
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/prisma ./prisma
 
-# Права на папки
+# Թղթապանակների իրավունքներ
 RUN chown -R nextjs:nodejs /app
 
 USER nextjs
@@ -480,7 +480,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # App (для production-like testing)
+  # App (production-like testing-ի համար)
   app:
     build:
       context: .
@@ -550,59 +550,59 @@ volumes:
 ### GitHub Secrets
 
 ```markdown
-## Обязательные секреты
+## Պարտադիր գաղտնիքներ
 
-| Секрет | Описание |
+| Գաղտնիք | Նկարագրություն |
 |--------|----------|
-| `DATABASE_URL` | Connection string к БД |
-| `VERCEL_TOKEN` | Токен Vercel |
-| `VERCEL_ORG_ID` | ID организации Vercel |
-| `VERCEL_PROJECT_ID` | ID проекта Vercel |
+| `DATABASE_URL` | Connection string ԲԴ-ին |
+| `VERCEL_TOKEN` | Vercel token |
+| `VERCEL_ORG_ID` | Vercel org ID |
+| `VERCEL_PROJECT_ID` | Vercel project ID |
 
-## Опциональные
+## Ընտրովի
 
-| Секрет | Описание |
+| Գաղտնիք | Նկարագրություն |
 |--------|----------|
-| `SLACK_WEBHOOK` | Webhook для уведомлений |
-| `CODECOV_TOKEN` | Токен Codecov |
-| `SENTRY_DSN` | DSN для Sentry |
+| `SLACK_WEBHOOK` | Webhook ծանուցումների համար |
+| `CODECOV_TOKEN` | Codecov token |
+| `SENTRY_DSN` | Sentry DSN |
 ```
 
 ### Environments
 
 ```yaml
 # GitHub Environments:
-# - preview (для PR)
+# - preview (PR-ի համար)
 # - staging (develop branch)
-# - production (main branch, требует approval)
+# - production (main branch, approval է պահանջում)
 ```
 
 ---
 
 ## 🚩 FEATURE FLAGS
 
-### Зачем нужны
+### Ինչու են պետք
 
-- Постепенный rollout новых фич
-- A/B тестирование
-- Kill switch для проблемных фич
-- Разделение deploy и release
+- Նոր ֆիչերի աստիճանական rollout
+- A/B թեստավորում
+- Խնդրահարույց ֆիչերի kill switch
+- Deploy և release-ի բաժանում
 
-### Простая реализация
+### Պարզ իրականացում
 
 ```typescript
 // lib/feature-flags.ts
 
 type FeatureFlag = {
   enabled: boolean;
-  percentage?: number;  // Для постепенного rollout
-  allowedUsers?: string[];  // Для beta-тестеров
+  percentage?: number;  // Աստիճանական rollout-ի համար
+  allowedUsers?: string[];  // Beta tester-ների համար
 };
 
 const FLAGS: Record<string, FeatureFlag> = {
   'new-checkout': {
     enabled: true,
-    percentage: 10,  // 10% пользователей
+    percentage: 10,  // 10% օգտատերեր
   },
   'dark-mode': {
     enabled: true,
@@ -620,12 +620,12 @@ export function isFeatureEnabled(
   const flag = FLAGS[flagName];
   if (!flag || !flag.enabled) return false;
 
-  // Проверяем список разрешённых
+  // Ստուգում ենք թույլատրված ցանկը
   if (flag.allowedUsers?.includes(userId ?? '')) {
     return true;
   }
 
-  // Проверяем процент
+  // Ստուգում ենք տոկոսը
   if (flag.percentage !== undefined && userId) {
     const hash = simpleHash(userId + flagName);
     return (hash % 100) < flag.percentage;
@@ -644,10 +644,10 @@ function simpleHash(str: string): number {
 }
 ```
 
-### Использование
+### Օգտագործում
 
 ```tsx
-// В React компоненте
+// React կոմպոնենտում
 function CheckoutPage() {
   const { user } = useAuth();
   const showNewCheckout = isFeatureEnabled('new-checkout', user?.id);
@@ -668,24 +668,24 @@ async search(@Query() query: SearchDto, @CurrentUser() user: User) {
 }
 ```
 
-### Продвинутые решения
+### Ընդլայնված լուծումներ
 
 ```markdown
-## Сервисы Feature Flags
+## Feature Flags սերվիսներ
 
-| Сервис | Плюсы | Минусы |
+| Սերվիս | Իր plus-երը | Minus-ներ |
 |--------|-------|--------|
-| LaunchDarkly | Мощный, A/B, analytics | Дорого |
-| Unleash | Open source, self-hosted | Нужно хостить |
-| ConfigCat | Простой, дешёвый | Меньше фич |
-| Flagsmith | Open source, хороший UI | Молодой |
-| Env vars | Бесплатно, просто | Требует redeploy |
+| LaunchDarkly | Հզոր, A/B, analytics | Թանկ |
+| Unleash | Open source, self-hosted | Պետք է host անել |
+| ConfigCat | Պարզ, էժան | Ավելի քիչ ֆիչեր |
+| Flagsmith | Open source, լավ UI | Երիտասարդ |
+| Env vars | Անվճար, պարզ | Redeploy է պահանջում |
 ```
 
-### Environment-based Flags
+### Environment-based flags
 
 ```typescript
-// Простой вариант через env
+// Պարզ տարբերակ env-ով
 const FEATURES = {
   NEW_CHECKOUT: process.env.FEATURE_NEW_CHECKOUT === 'true',
   DARK_MODE: process.env.FEATURE_DARK_MODE === 'true',
@@ -700,76 +700,76 @@ FEATURE_NEW_CHECKOUT=false
 FEATURE_DARK_MODE=true
 ```
 
-### Правила Feature Flags
+### Feature Flags-ի կանոններ
 
 ```markdown
 ## Best Practices
 
-### Именование
+### Անվանում
 - ✅ `new-checkout`, `experimental-search`
 - ❌ `flag1`, `test`, `temp`
 
 ### Lifecycle
-1. Создать флаг (disabled)
-2. Включить для dev/staging
-3. Постепенный rollout в prod (10% → 50% → 100%)
-4. Удалить флаг и старый код
+1. Ստեղծել flag (disabled)
+2. Միացնել dev/staging-ի համար
+3. Աստիճանական rollout prod-ում (10% → 50% → 100%)
+4. Ջնջել flag-ը և հին կոդը
 
-### Гигиена
-- ✅ Удалять флаги после полного rollout
-- ✅ Документировать назначение каждого флага
-- ✅ Устанавливать expiration date
-- ❌ Не накапливать сотни флагов
+### Հիգիենա
+- ✅ Ջնջել flag-երը ամբողջական rollout-ից հետո
+- ✅ Փաստաթղթավորել յուրաքանչյուր flag-ի նշանակությունը
+- ✅ Սահմանել expiration date
+- ❌ Հարյուրավոր flag-եր չկուտակել
 
-### Мониторинг
-- ✅ Логировать какой вариант показан
-- ✅ Метрики по каждому варианту
-- ✅ Алерты при проблемах с новым вариантом
+### Մոնիտորինգ
+- ✅ Լոգավորել, թե որ տարբերակն է ցուցադրվել
+- ✅ Մետրիկներ յուրաքանչյուր տարբերակի համար
+- ✅ Ալերտներ նոր տարբերակի խնդիրների դեպքում
 ```
 
 ---
 
 ## ☁️ MANAGED PLATFORMS (Vercel, Railway, Render, Fly.io)
 
-> Если деплой на managed платформы — Docker и K8s секции выше не нужны.
+> Եթե դեպլոյ managed պլատֆորմաներում է — Docker և K8s սեկցիաները վերևում պետք չեն։
 
-### Сравнение платформ
+### Պլատֆորմների համեմատություն
 
 ```markdown
-| Платформа | Best for | Особенности |
+| Պլատֆորմա | Best for | Բնութագրեր |
 |-----------|----------|-------------|
-| **Vercel** | Next.js, Frontend | Edge Functions, ISR, идеален для Next.js |
-| **Railway** | Full-stack, API | Простой, хороший DX, дешевле Vercel для backend |
-| **Render** | Full-stack | Бесплатный tier, background workers |
-| **Fly.io** | Global, Edge | Контейнеры близко к юзерам, low latency |
+| **Vercel** | Next.js, Frontend | Edge Functions, ISR, իդեալ Next.js-ի համար |
+| **Railway** | Full-stack, API | Պարզ, լավ DX, ավելի էժան Vercel-ից backend-ի համար |
+| **Render** | Full-stack | Անվճար tier, background workers |
+| **Fly.io** | Global, Edge | Կոնտեյներներ մոտ օգտատերերին, low latency |
 ```
 
 ### Vercel (Next.js)
 
 ```markdown
-## Что Vercel делает автоматически
+## Ինչ Vercel-ը ավտոմատ անում է
 
-- ✅ Build и deploy при push
-- ✅ Preview deployments для каждого PR
-- ✅ SSL сертификаты
+- ✅ Build և deploy push-ի դեպքում
+- ✅ Preview deployment յուրաքանչյուր PR-ի համար
+- ✅ SSL սերտիֆիկատներ
 - ✅ CDN / Edge Network
 - ✅ Environment variables management
 - ✅ Analytics и Speed Insights
-- ✅ Интеграция с Neon (auto DB branches)
+- ✅ Ինտեգրացիա Neon-ի հետ (auto DB branches)
 
-## Настройка
+## Կարգավորում
 
-1. Подключить GitHub repo
-2. Выбрать Framework Preset: Next.js
-3. Настроить Environment Variables
+1. Միացնել GitHub repo
+2. Ընտրել Framework Preset. Next.js
+3. Կարգավորել Environment Variables
 4. Deploy
 ```
 
 ```typescript
-// vercel.json (опционально, для кастомизации)
+// vercel.json (ընտրովի, custom-ի համար)
 {
   "framework": "nextjs",
-  "regions": ["iad1"],  // US East (ближе к Neon)
+  "regions": ["iad1"],  // US East (մոտ Neon-ին)
   "env": {
     "NEXT_PUBLIC_API_URL": "https://api.example.com"
   },
@@ -796,22 +796,22 @@ FEATURE_DARK_MODE=true
 
 ## Что Railway делает
 
-- ✅ Auto-deploy при push
+- ✅ Auto-deploy push-ի դեպքում
 - ✅ Preview environments
-- ✅ Встроенные сервисы (Postgres, Redis, etc.)
-- ✅ Private networking между сервисами
-- ✅ Logs и metrics
+- ✅ Ներկառուցված սերվիսներ (Postgres, Redis և այլն)
+- ✅ Private ցանց սերվիսների միջև
+- ✅ Logs և metrics
 
-## Настройка
+## Կարգավորում
 
 1. New Project → Deploy from GitHub
-2. Railway автоматически определяет framework
+2. Railway-ն ավտոմատ որոշում է framework-ը
 3. Add Variables
 4. Deploy
 ```
 
 ```toml
-# railway.toml (опционально)
+# railway.toml (ընտրովի)
 [build]
 builder = "nixpacks"
 
@@ -832,35 +832,35 @@ restartPolicyType = "on_failure"
 - Static sites
 - Простые API
 
-## Особенности
+## Բնութագրեր
 
-- ✅ Free tier (с ограничениями)
+- ✅ Free tier (սահմանափակումներով)
 - ✅ Auto-deploy
 - ✅ Background workers
-- ⚠️ Cold starts на free tier
+- ⚠️ Cold start-եր free tier-ում
 ```
 
 ```yaml
-# render.yaml — NestJS backend на Render
+# render.yaml — NestJS backend Render-ում
 services:
   - type: web
     name: nestjs-api
-    runtime: docker                      # Dockerfile для NestJS
+    runtime: docker                      # Dockerfile NestJS-ի համար
     dockerfilePath: ./Dockerfile
     healthCheckPath: /health/live
     envVars:
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
-        sync: false                      # Задаётся вручную (Neon pooler URL)
+        sync: false                      # Ձեռքով (Neon pooler URL)
       - key: DIRECT_URL
-        sync: false                      # Neon direct URL для миграций
+        sync: false                      # Neon direct URL միգրացիաների համար
       - key: PORT
         value: 3000
 ```
 
 ```dockerfile
-# Dockerfile — NestJS на Render
+# Dockerfile — NestJS Render-ում
 FROM node:20-alpine AS base
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
@@ -897,13 +897,13 @@ CMD ["node", "dist/main.js"]
 - Контейнеры с полным контролем
 - WebSockets / real-time apps
 
-## Особенности
+## Բնութագրեր
 
-- ✅ Деплой в регионы близко к юзерам
-- ✅ Fly Machines (контейнеры)
-- ✅ Встроенный Postgres и Redis
+- ✅ Դեպլոյ տարածաշրջաններում մոտ օգտատերերին
+- ✅ Fly Machines (կոնտեյներներ)
+- ✅ Ներկառուցված Postgres և Redis
 - ✅ Private networking
-- ⚠️ Сложнее чем Vercel/Railway
+- ⚠️ Ավելի բարդ քան Vercel/Railway
 ```
 
 ```toml

@@ -6,25 +6,25 @@ alwaysApply: false
 
 # ԻՆՏԵՐՆԱՑԻՈՆԱԼԱՑՄԱՆ ԿԱՆՈՆՆԵՐ (i18n)
 
-> Мир больше одного языка. Планируй i18n с начала, не добавляй потом.
+> Աշխարհը մեկից ավելի լեզու ունի։ Նախատեսի՛ր i18n-ը սկզբից, հետո մի ավելացնի։
 
 ---
 
-## 🎯 ГЛАВНЫЕ ПРИНЦИПЫ
+## 🎯 ՀԻՄՆԱԿԱՆ ՍԿԶԲՈՒՆՔՆԵՐ
 
-1. **Externalise strings** — все тексты в отдельных файлах
-2. **Форматирование по локали** — даты, числа, валюты
-3. **RTL support** — если нужна арабская/иврит версия
-4. **Fallback** — если перевода нет, показывать default
+1. **Externalise strings** — բոլոր տեքստերը առանձին ֆայլերում
+2. **Ֆորմատավորում լոկալով** — ամսաթվեր, թվեր, արժույթներ
+3. **RTL support** — եթե արաբական/եբրայերեն տարբերակ է պետք
+4. **Fallback** — եթե թարգմանություն չկա, ցուցադրել default
 
 ---
 
 ## 🌐 NEXT.JS I18N
 
-### Настройка (App Router)
+### Կարգավորում (App Router)
 
 ```typescript
-// middleware.ts — определение языка через middleware
+// middleware.ts — լեզվի որոշում middleware-ով
 import { NextRequest, NextResponse } from 'next/server';
 
 const locales = ['en', 'ru', 'hy'];
@@ -33,14 +33,14 @@ const defaultLocale = 'en';
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Проверяем есть ли locale в URL
+  // Ստուգում. locale URL-ում կա՞
   const pathnameHasLocale = locales.some(
     (locale) => pathname.startsWith(`/${locale}/`) || pathname === `/${locale}`
   );
 
   if (pathnameHasLocale) return;
 
-  // Определяем locale из Accept-Language header
+  // Որոշում locale-ը Accept-Language header-ից
   const locale = request.headers.get('accept-language')?.split(',')[0]?.split('-')[0] ?? defaultLocale;
   const resolvedLocale = locales.includes(locale) ? locale : defaultLocale;
 
@@ -53,12 +53,12 @@ export const config = {
 };
 ```
 
-### Структура файлов
+### Ֆայլերի կառուցվածք
 
 ```
 src/
 ├── app/
-│   └── [locale]/           # Динамический сегмент для языка
+│   └── [locale]/           # Դինամիկ սեգմենտ լեզվի համար
 │       ├── layout.tsx
 │       ├── page.tsx
 │       └── products/
@@ -66,10 +66,10 @@ src/
 │
 ├── locales/
 │   ├── en/
-│   │   ├── common.json     # Общие строки
-│   │   ├── auth.json       # Авторизация
-│   │   ├── products.json   # Продукты
-│   │   └── errors.json     # Ошибки
+│   │   ├── common.json     # Ընդհանուր տողեր
+│   │   ├── auth.json       # Աուտորիզացիա
+│   │   ├── products.json   # Ապրանքներ
+│   │   └── errors.json     # Սխալներ
 │   ├── ru/
 │   │   ├── common.json
 │   │   └── ...
@@ -79,12 +79,12 @@ src/
 │
 └── lib/
     └── i18n/
-        ├── index.ts        # Главный экспорт
-        ├── config.ts       # Конфигурация
+        ├── index.ts        # Գլխավոր export
+        ├── config.ts       # Կոնֆիգուրացիա
         └── getDictionary.ts
 ```
 
-### Формат файлов переводов
+### Թարգմանությունների ֆայլերի ձևաչափ
 
 ```json
 // locales/en/common.json
@@ -130,7 +130,7 @@ src/
 }
 ```
 
-### Получение переводов (Server Components)
+### Թարգմանությունների ստացում (Server Components)
 
 ```typescript
 // lib/i18n/getDictionary.ts
@@ -148,7 +148,7 @@ export async function getDictionary(locale: Locale) {
   return dictionaries[locale]();
 }
 
-// Использование в Server Component
+// Օգտագործում Server Component-ում
 // app/[locale]/page.tsx
 export default async function Page({ params }: { params: { locale: Locale } }) {
   const dict = await getDictionary(params.locale);
@@ -165,7 +165,7 @@ export default async function Page({ params }: { params: { locale: Locale } }) {
 ### Client Components (next-intl)
 
 ```typescript
-// Установка: pnpm add next-intl
+// Տեղադրում. pnpm add next-intl
 
 // lib/i18n/config.ts
 import { getRequestConfig } from 'next-intl/server';
@@ -174,7 +174,7 @@ export default getRequestConfig(async ({ locale }) => ({
   messages: (await import(`@/locales/${locale}/common.json`)).default,
 }));
 
-// Использование в Client Component
+// Օգտագործում Client Component-ում
 'use client';
 
 import { useTranslations } from 'next-intl';
@@ -193,9 +193,9 @@ export function ProductCard({ product }: Props) {
 
 ---
 
-## 🔢 ФОРМАТИРОВАНИЕ
+## 🔢 ՖՈՐՄԱՏԱՎՈՐՈՒՄ
 
-### Числа
+### Թվեր
 
 ```typescript
 // lib/i18n/formatters.ts
@@ -208,13 +208,13 @@ export function formatNumber(
   return new Intl.NumberFormat(locale, options).format(value);
 }
 
-// Использование
+// Օգտագործում
 formatNumber(1234567.89, 'en');    // "1,234,567.89"
 formatNumber(1234567.89, 'ru');    // "1 234 567,89"
 formatNumber(1234567.89, 'de');    // "1.234.567,89"
 ```
 
-### Валюты
+### Արժույթներ
 
 ```typescript
 export function formatCurrency(
@@ -228,14 +228,14 @@ export function formatCurrency(
   }).format(amount);
 }
 
-// Использование
+// Օգտագործում
 formatCurrency(99.99, 'USD', 'en');    // "$99.99"
 formatCurrency(99.99, 'RUB', 'ru');    // "99,99 ₽"
 formatCurrency(99.99, 'AMD', 'hy');    // "99,99 ֏"
 formatCurrency(99.99, 'EUR', 'de');    // "99,99 €"
 ```
 
-### Даты
+### Ամսաթվեր
 
 ```typescript
 export function formatDate(
@@ -263,13 +263,13 @@ export function formatDateTime(
   }).format(d);
 }
 
-// Использование
+// Օգտագործում
 formatDate(new Date(), 'en');    // "Jan 15, 2024"
 formatDate(new Date(), 'ru');    // "15 янв. 2024 г."
 formatDate(new Date(), 'de');    // "15.01.2024"
 ```
 
-### Относительное время
+### Հարաբերական ժամանակ
 
 ```typescript
 export function formatRelativeTime(
@@ -294,7 +294,7 @@ export function formatRelativeTime(
   return rtf.format(-Math.floor(diffInSeconds / 86400), 'day');
 }
 
-// Использование
+// Օգտագործում
 formatRelativeTime(fiveMinutesAgo, 'en');    // "5 minutes ago"
 formatRelativeTime(fiveMinutesAgo, 'ru');    // "5 минут назад"
 ```
@@ -303,7 +303,7 @@ formatRelativeTime(fiveMinutesAgo, 'ru');    // "5 минут назад"
 
 ## 📝 PLURALIZATION
 
-### Правила множественного числа
+### Հոգնակի թվի կանոններ
 
 ```json
 // locales/en/products.json
@@ -327,7 +327,7 @@ formatRelativeTime(fiveMinutesAgo, 'ru');    // "5 минут назад"
 }
 ```
 
-### Реализация
+### Իրականացում
 
 ```typescript
 // lib/i18n/pluralize.ts
@@ -344,7 +344,7 @@ export function pluralize(
   return template.replace('{count}', count.toString());
 }
 
-// Использование
+// Օգտագործում
 pluralize(0, dict.itemCount, 'en');   // "No items"
 pluralize(1, dict.itemCount, 'en');   // "1 item"
 pluralize(5, dict.itemCount, 'en');   // "5 items"
@@ -357,7 +357,7 @@ pluralize(21, dict.itemCount, 'ru');  // "21 товар"
 
 ---
 
-## 🔄 ПЕРЕКЛЮЧЕНИЕ ЯЗЫКА
+## 🔄 ԼԵԶՎԻ ՓՈԽԱՐԿՈՒՄ
 
 ### Language Switcher
 
@@ -378,7 +378,7 @@ export function LanguageSwitcher({ currentLocale }: { currentLocale: string }) {
   const pathname = usePathname();
 
   const switchLocale = (newLocale: string) => {
-    // Заменяем текущую локаль в пути
+    // Փոխարինում ենք ընթացիկ լոկալը path-ում
     const newPath = pathname.replace(`/${currentLocale}`, `/${newLocale}`);
     router.push(newPath);
   };
@@ -401,77 +401,77 @@ export function LanguageSwitcher({ currentLocale }: { currentLocale: string }) {
 
 ---
 
-## 🚫 АНТИПАТТЕРНЫ
+## 🚫 ԱՆՏԻՊԱՏԵՐՆԵՐ
 
-### ❌ Не делай
+### ❌ Մի արա
 
 ```tsx
-// ❌ Хардкод текстов
+// ❌ Տեքստերի hardcode
 <button>Submit</button>
 <p>Your order has been placed</p>
 
-// ❌ Конкатенация строк (ломает порядок слов)
+// ❌ Տողերի կոնկատենացիա (խախտում է բառերի կարգը)
 const message = `Hello, ` + userName + `! You have ` + count + ` items.`;
 
-// ❌ Хардкод форматов
-const date = `${d.getMonth()}/${d.getDate()}/${d.getFullYear()}`; // US формат
-const price = `$${amount.toFixed(2)}`; // Доллары захардкожены
+// ❌ Ֆորմատների hardcode
+const date = `${d.getMonth()}/${d.getDate()}/${d.getFullYear()}`; // US ֆորմատ
+const price = `$${amount.toFixed(2)}`; // Դոլարները hardcoded
 
-// ❌ Хранение переводов в коде
+// ❌ Թարգմանությունների պահում կոդում
 const translations = {
   en: { hello: 'Hello' },
   ru: { hello: 'Привет' },
 };
 ```
 
-### ✅ Делай
+### ✅ Արա
 
 ```tsx
-// ✅ Все тексты из переводов
+// ✅ Բոլոր տեքստերը թարգմանություններից
 <button>{t('buttons.submit')}</button>
 <p>{t('orders.success')}</p>
 
-// ✅ Интерполяция
-// В JSON: "greeting": "Hello, {name}! You have {count} items."
+// ✅ Ինտերպոլացիա
+// JSON-ում. "greeting": "Hello, {name}! You have {count} items."
 t('greeting', { name: userName, count: itemCount })
 
-// ✅ Intl API для форматирования
+// ✅ Intl API ֆորմատավորման համար
 formatDate(date, locale)
 formatCurrency(amount, currency, locale)
 
-// ✅ Переводы в отдельных JSON файлах
+// ✅ Թարգմանություններ առանձին JSON ֆայլերում
 // locales/en/common.json
 // locales/ru/common.json
 ```
 
 ---
 
-## 📋 CHECKLIST
+## 📋 ՍՏՈՒԳԱՑՈՒՑԱԿ
 
-### Начало проекта
+### Նախագծի սկիզբ
 
-- [ ] Определены поддерживаемые языки
-- [ ] Выбрана библиотека (next-intl, react-intl, etc.)
-- [ ] Настроена структура папок для переводов
-- [ ] Настроен fallback на default locale
+- [ ] Աջակցվող լեզուները որոշված են
+- [ ] Ընտրված է գրադարան (next-intl, react-intl և այլն)
+- [ ] Կարգավորված է թղթապանակների կառուցվածք թարգմանությունների համար
+- [ ] Կարգավորված է fallback default locale-ի վրա
 
-### Разработка
+### Մշակում
 
-- [ ] Все тексты в файлах переводов
-- [ ] Нет хардкода текстов в компонентах
-- [ ] Используется Intl API для форматирования
-- [ ] Pluralization настроен корректно
-- [ ] Language switcher работает
+- [ ] Բոլոր տեքստերը թարգմանությունների ֆայլերում են
+- [ ] Կոմպոնենտներում տեքստերի hardcode չկա
+- [ ] Օգտագործվում է Intl API ֆորմատավորման համար
+- [ ] Pluralization ճիշտ է կարգավորված
+- [ ] Language switcher աշխատում է
 
-### Перед релизом
+### Ռելիզից առաջ
 
-- [ ] Все строки переведены на все языки
-- [ ] Тестирование на всех языках
-- [ ] Даты/числа/валюты отображаются корректно
-- [ ] Макет не ломается от длинных переводов
-- [ ] SEO: hreflang теги добавлены
+- [ ] Բոլոր տողերը թարգմանված են բոլոր լեզուներով
+- [ ] Թեստավորում բոլոր լեզուներով
+- [ ] Ամսաթվեր/թվեր/արժույթներ ցուցադրվում են ճիշտ
+- [ ] Մակետը չի ջարդվում երկար թարգմանություններից
+- [ ] SEO. hreflang թեգեր ավելացված են
 
 ---
 
-**Версия:** 1.1
-**Дата:** 2026-02-12
+**Տարբերակ.** 1.1
+**Ամսաթիվ.** 2026-02-12
